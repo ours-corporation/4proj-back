@@ -1,0 +1,20 @@
+{
+  "name": "4proj-back",
+  "version": "1.0.0",
+  "description": "",
+  "homepage": "https://github.com/le-grand-ours/4proj-back#readme",
+  "bugs": {
+    "url": "https://github.com/le-grand-ours/4proj-back/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/le-grand-ours/4proj-back.git"
+  },
+  "license": "ISC",
+  "author": "",
+  "type": "commonjs",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  }
+}
