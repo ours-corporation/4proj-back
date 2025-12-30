@@ -1,31 +1,31 @@
- # Node modules
- node_modules
+# Node modules
+node_modules
 
- # Logs
- logs
- *.log
- npm-debug.log*
- yarn-debug.log*
- yarn-error.log*
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
 
- # Environment variables
- .env
+# Environment variables
+.env
 
- # Optional npm cache directory
- .npm
+# Optional npm cache directory
+.npm
 
- # Optional eslint cache
- .eslintcache
+# Optional eslint cache
+.eslintcache
 
- # Mac system files
- .DS_Store
+# Mac system files
+.DS_Store
 
- # VSCode settings
- .vscode/
+# VSCode settings
+.vscode/
 
- # Webstorm settings
+# Webstorm settings
 .idea/
 
- # Build directories
- dist/
- build/
+# Build directories
+dist/
+build/
