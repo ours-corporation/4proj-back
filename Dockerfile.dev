@@ -1,0 +1,15 @@
+FROM node:25-alpine
+WORKDIR /app
+ENV NODE_ENV=development
+
+COPY package*.json ./
+RUN npm ci
+
+# outils de dev (optionnel : ts-node-dev ou nodemon)
+RUN npm install -g ts-node-dev
+
+# copier le reste (sera surchargé par le volume en compose)
+COPY . .
+
+EXPOSE 3000
+CMD ["npm", "run", "dev"]

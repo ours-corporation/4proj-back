@@ -1,0 +1,25 @@
+FROM node:25-alpine AS builder
+WORKDIR /app
+
+# installer toutes les dépendances pour builder (incl. dev)
+COPY package*.json ./
+RUN npm ci
+
+# copier le code et build
+COPY . .
+RUN npm run build
+
+# retirer les dépendances de dev pour ne garder que la prod
+RUN npm prune --production
+
+FROM node:20-alpine AS runner
+WORKDIR /app
+ENV NODE_ENV=production
+
+# copier package, node_modules optimisés et build
+COPY --from=builder /app/package*.json ./
+COPY --from=builder /app/node_modules ./node_modules
+COPY --from=builder /app/dist ./dist
+
+EXPOSE 3000
+CMD ["node", "dist/index.js"]

@@ -8,7 +8,7 @@ const PORT = process.env.PORT || 3000;
 const HOST = process.env.HOST || '0.0.0.0';
 
 app.get('/hello', (req: Request, res: Response) => {
-    res.json({ message: 'Hello world !', apiKey: process.env.API_KEY });
+    res.json({ message: 'Ah bah non !', apiKey: process.env.API_KEY });
 });
 
 app.listen({ port: PORT, host: HOST }, () => {
