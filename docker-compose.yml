@@ -21,3 +21,18 @@ services:
     environment:
       - NODE_ENV=production
     restart: unless-stopped
+
+  db:
+    container_name: db_postgres
+    image: postgres:18
+    environment:
+      POSTGRES_USER: ${DB_USER:-postgres}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-password}
+      POSTGRES_DB: ${DB_NAME:-mydatabase}
+    ports:
+      - ${DB_PORT:-5432}:${DB_PORT:-5432}
+    volumes:
+      - pgdata:/var/lib/postgresql
+
+volumes:
+  pgdata:
