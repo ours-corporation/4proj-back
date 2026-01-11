@@ -1,26 +1,23 @@
-version: "3.8"
 services:
   app:
     build:
       context: .
       dockerfile: Dockerfile.dev
     volumes:
-      - .:/app
-      - /app/node_modules
+      - .:/app               # synchroniser le code local
+      - /app/node_modules    # garder node_modules dans le container
     ports:
       - "3000:3000"
     environment:
-      - NODE_ENV=development
-
-  app_prod:
-    build:
-      context: .
-      dockerfile: Dockerfile.prod
-    ports:
-      - "3000:3000"
-    environment:
-      - NODE_ENV=production
-    restart: unless-stopped
+      NODE_ENV: development
+      PORT: 3000
+      DB_HOST: ${DB_HOST:-db_postgres}
+      DB_USER: ${DB_USER:-postgres}
+      DB_PASSWORD: ${DB_PASSWORD:-password}
+      DB_NAME: ${DB_NAME:-mydatabase}
+      DB_PORT: ${DB_PORT:-5432}
+    depends_on:
+      - db
 
   db:
     container_name: db_postgres
@@ -30,7 +27,7 @@ services:
       POSTGRES_PASSWORD: ${DB_PASSWORD:-password}
       POSTGRES_DB: ${DB_NAME:-mydatabase}
     ports:
-      - ${DB_PORT:-5432}:${DB_PORT:-5432}
+      - "${DB_PORT:-5432}:${DB_PORT:-5432}"
     volumes:
       - pgdata:/var/lib/postgresql
 
