@@ -76,6 +76,9 @@ User.init(
             minimal: {
                 attributes: ['id', 'email'],
             },
+            withoutPassword: {
+                attributes: { exclude: ['password', "refresh_token" ] },
+            },
         },
     }
 );

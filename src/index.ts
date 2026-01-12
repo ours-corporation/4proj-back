@@ -2,8 +2,10 @@ import express, { Request, Response } from 'express';
 import dotenv from 'dotenv';
 import User from './models/User';
 import cors from 'cors';
-
+import { setupSwagger } from './swagger';
 import authRoutes from './routes/auth';
+import usersRouter from './routes/user';
+import { requireAuth } from './middleware/auth';
 
 
 dotenv.config();
@@ -30,8 +32,11 @@ apiRouter.get('/status', (req: Request, res: Response) => {
 
 // auth routes
 apiRouter.use('/', authRoutes);
+apiRouter.use('/users', requireAuth, usersRouter);
 
 app.use('/api', apiRouter);
+
+setupSwagger(app);
 
 app.use((req: Request, res: Response) => {
     res.status(404).json({
@@ -40,8 +45,6 @@ app.use((req: Request, res: Response) => {
         timestamp: new Date().toISOString()
     });
 });
-
-
 
 app.listen({ port: PORT, host: HOST }, () => {
     console.log(`Server running at http://${HOST}:${PORT}`);

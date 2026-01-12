@@ -6,7 +6,7 @@ export const generateAccessToken = (
 ) => {
     const JWT_SECRET = process.env.JWT_SECRET as string;
     return jwt.sign(
-        { id: user.id, email: user.email },
+        { id: user.id },
         JWT_SECRET,
         { expiresIn: '15m' }
     );
