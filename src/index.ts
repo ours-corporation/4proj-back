@@ -1,6 +1,7 @@
 import express, { Request, Response } from 'express';
 import dotenv from 'dotenv';
 import User from './models/User';
+import cors from 'cors';
 
 import authRoutes from './routes/auth';
 
@@ -15,6 +16,13 @@ const apiRouter = express.Router();
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+
+app.use(cors({
+    origin: "*",
+    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
+    allowedHeaders: ["Content-Type", "Authorization"],
+    credentials: true, // si tu veux gérer les cookies
+}));
 
 apiRouter.get('/status', (req: Request, res: Response) => {
     res.json({ status: 'OK', timestamp: new Date().toISOString() });
