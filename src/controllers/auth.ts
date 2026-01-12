@@ -3,6 +3,7 @@ import User from '../models/User';
 import {loginValidator, registerValidator} from '../validator/auth';
 import { compareString, hashString } from '../services/hash';
 import { generateAccessToken, generateRefreshToken, verifyRefreshToken } from '../services/jwt';
+import {constants} from "node:os";
 
 export const login = async (req: Request, res: Response) => {
     try {
@@ -18,11 +19,11 @@ export const login = async (req: Request, res: Response) => {
 
         const accessToken = generateAccessToken({ id: user.id, email: user.email });
         const refreshToken = generateRefreshToken({ id: user.id });
+
         const hashedRefresh = await hashString(refreshToken);
 
         await user.update({ refresh_token: hashedRefresh });
 
-        // Option: set httpOnly cookie for refresh token
         res.cookie('refreshToken', refreshToken, {
             httpOnly: true,
             secure: process.env.NODE_ENV === 'production',
@@ -43,10 +44,12 @@ export const refresh = async (req: Request, res: Response) => {
         const refreshToken = req.body.refreshToken || req.cookies?.refreshToken;
         if (!refreshToken) return res.status(400).json({ error: 'No refresh token provided' });
 
+        console.log('refreshToken', refreshToken);
+
         let payload: any;
         try {
             payload = verifyRefreshToken(refreshToken) as any;
-        } catch {
+        } catch (error) {
             return res.status(401).json({ error: 'Invalid refresh token' });
         }
 
@@ -56,7 +59,6 @@ export const refresh = async (req: Request, res: Response) => {
         const matches = await compareString(refreshToken, user.refresh_token);
         if (!matches) return res.status(401).json({ error: 'Invalid refresh token' });
 
-        // rotate tokens
         const newAccess = generateAccessToken({ id: user.id, email: user.email });
         const newRefresh = generateRefreshToken({ id: user.id });
         const newHashed = await hashString(newRefresh);
@@ -84,7 +86,6 @@ export const logout = async (req: Request, res: Response) => {
             return res.status(200).json({ ok: true });
         }
 
-        // try to decode to get user id (no verify needed to identify)
         try {
             const payload = verifyRefreshToken(refreshToken) as any;
             const user = await User.findByPk(payload.id);
@@ -92,9 +93,8 @@ export const logout = async (req: Request, res: Response) => {
                 await user.update({ refresh_token: null });
             }
         } catch {
-            // ignore invalid token on logout
+            // Ignore errors during logout
         }
-
         res.clearCookie('refreshToken');
         return res.status(200).json({ ok: true });
     } catch (err) {

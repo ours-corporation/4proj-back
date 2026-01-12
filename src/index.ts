@@ -6,7 +6,7 @@ import { setupSwagger } from './swagger';
 import authRoutes from './routes/auth';
 import usersRouter from './routes/user';
 import { requireAuth } from './middleware/auth';
-
+import cookieParser from 'cookie-parser';
 
 dotenv.config();
 
@@ -20,11 +20,14 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 app.use(cors({
-    origin: "*",
+    origin: "http://localhost:3001",
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
     allowedHeaders: ["Content-Type", "Authorization"],
-    credentials: true, // si tu veux gérer les cookies
+    credentials: true,
 }));
+
+app.use(cookieParser());
+
 
 apiRouter.get('/status', (req: Request, res: Response) => {
     res.json({ status: 'OK', timestamp: new Date().toISOString() });

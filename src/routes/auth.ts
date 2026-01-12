@@ -1,5 +1,5 @@
 import { Router, Request, Response } from 'express';
-import {register, login} from "../controllers/auth";
+import {register, login, refresh, logout} from "../controllers/auth";
 
 const authRouter = Router();
 
@@ -80,5 +80,15 @@ authRouter.post('/login', (req: Request, res: Response) => {
 authRouter.post('/register', (req: Request, res: Response) => {
     return register(req, res);
 });
+
+
+authRouter.post('/refresh', async (req: Request, res: Response) => {
+    return refresh(req, res);
+});
+
+authRouter.post('/logout', async (req: Request, res: Response) => {
+    return logout(req, res);
+});
+
 
 export default authRouter;

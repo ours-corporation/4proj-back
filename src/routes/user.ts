@@ -126,5 +126,4 @@ usersRouter.get('/:id', async (req: Request, res: Response) => {
     return getUserById(req, res);
 });
 
-
 export default usersRouter;
