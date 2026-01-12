@@ -44,8 +44,6 @@ export const refresh = async (req: Request, res: Response) => {
         const refreshToken = req.body.refreshToken || req.cookies?.refreshToken;
         if (!refreshToken) return res.status(400).json({ error: 'No refresh token provided' });
 
-        console.log('refreshToken', refreshToken);
-
         let payload: any;
         try {
             payload = verifyRefreshToken(refreshToken) as any;
@@ -105,13 +103,22 @@ export const logout = async (req: Request, res: Response) => {
 
 export const register = async (req: Request, res: Response) => {
     try {
-        const { email, password } = req.body;
+        const { username, email, password } = req.body;
 
         if (await registerValidator(req, res)) return;
+
+        //todo : trouver un moyen d'avoir de vraies faux usernames
+        let newUsername: string;
+        if(username == null || username == "") {
+            newUsername = 'user' + Math.floor(Math.random() * 1000000);
+        } else {
+            newUsername = username;
+        }
 
         const hashedPassword = await hashString(password);
 
         const newUser = await User.create({
+            username: newUsername,
             email,
             password: hashedPassword,
             quota_id: 1,

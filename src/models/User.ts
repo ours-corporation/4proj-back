@@ -3,6 +3,7 @@ import sequelize from '../config/sequelize';
 
 interface UserAttributes {
     id?: number;
+    username?: string | null;
     email: string;
     password: string;
     quota_id?: number | null;
@@ -14,6 +15,7 @@ interface UserAttributes {
 
 class User extends Model<UserAttributes> implements UserAttributes {
     public id!: number;
+    public username!: string;
     public email!: string;
     public password!: string;
     public quota_id!: number | null;
@@ -29,6 +31,10 @@ User.init(
             type: DataTypes.INTEGER,
             autoIncrement: true,
             primaryKey: true,
+        },
+        username: {
+            type: DataTypes.STRING,
+            allowNull: true,
         },
         email: {
             type: DataTypes.STRING,

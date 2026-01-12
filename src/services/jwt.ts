@@ -8,7 +8,7 @@ export const generateAccessToken = (
     return jwt.sign(
         { id: user.id },
         JWT_SECRET,
-        { expiresIn: '10s' }
+        { expiresIn: '15m' }
     );
 };
 

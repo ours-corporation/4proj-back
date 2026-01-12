@@ -6,9 +6,9 @@ const options: swaggerJsdoc.Options = {
     definition: {
         openapi: '3.0.0',
         info: {
-            title: 'Mon API Node TS',
+            title: 'SupFile API',
             version: '1.0.0',
-            description: 'Documentation de mon API Node.js en TypeScript',
+            description: 'Documentation de l\'API SupFile pour le projet 4PROJ',
         },
         servers: [
             {
