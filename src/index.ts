@@ -8,6 +8,7 @@ import usersRouter from './routes/user';
 import filesRouter from './routes/file';
 import { requireAuth } from './middleware/auth';
 import cookieParser from 'cookie-parser';
+import folderRouter from './routes/folder';
 
 dotenv.config();
 
@@ -38,6 +39,7 @@ apiRouter.get('/status', (req: Request, res: Response) => {
 apiRouter.use('/', authRoutes);
 apiRouter.use('/users', requireAuth, usersRouter);
 apiRouter.use('/files', requireAuth, filesRouter)
+apiRouter.use('/folders', requireAuth, folderRouter);
 
 app.use('/api', apiRouter);
 
