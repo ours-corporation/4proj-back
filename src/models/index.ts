@@ -6,7 +6,7 @@ import File from './File';
 // User <-> Quota
 // Un user a un seul quota, un quota peut être assigné à plusieurs users
 Quota.hasMany(User, { foreignKey: 'quota_id' });
-User.belongsTo(Quota, { foreignKey: 'quota_id' });
+User.belongsTo(Quota, { foreignKey: 'quota_id', as: 'Quota' });
 
 // User <-> Folder
 // Un user possède plusieurs dossiers

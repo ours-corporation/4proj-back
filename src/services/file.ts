@@ -1,7 +1,7 @@
 import fs from 'fs/promises'; // Pour manipuler les fichiers (async)
 import path from 'path';      // Pour gérer les chemins de dossiers
 import { v4 as uuidv4 } from 'uuid'; // Pour générer le nom physique unique
-import { User, File, Folder } from '../models'; // Tes modèles Sequelize
+import { User, File, Folder } from '../models';
 
 // Le chemin racine défini dans ton docker-compose
 const UPLOAD_ROOT = '/app/uploads';

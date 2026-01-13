@@ -8,10 +8,10 @@ WORKDIR /app
 ENV NODE_ENV=development
 
 # Copier uniquement package.json et package-lock.json pour profiter du cache Docker
-COPY package*.json ./
+COPY package.json ./
 
 # Installer les dépendances
-RUN npm ci
+RUN npm i
 
 # Installer ts-node-dev globalement pour dev
 RUN npm install -g ts-node-dev

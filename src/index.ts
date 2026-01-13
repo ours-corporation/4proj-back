@@ -5,6 +5,7 @@ import cors from 'cors';
 import { setupSwagger } from './swagger';
 import authRoutes from './routes/auth';
 import usersRouter from './routes/user';
+import filesRouter from './routes/file';
 import { requireAuth } from './middleware/auth';
 import cookieParser from 'cookie-parser';
 
@@ -36,6 +37,7 @@ apiRouter.get('/status', (req: Request, res: Response) => {
 // auth routes
 apiRouter.use('/', authRoutes);
 apiRouter.use('/users', requireAuth, usersRouter);
+apiRouter.use('/files', requireAuth, filesRouter)
 
 app.use('/api', apiRouter);
 
