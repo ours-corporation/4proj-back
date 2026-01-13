@@ -1,6 +1,8 @@
-import fs from 'fs/promises'; // Pour manipuler les fichiers (async)
-import path from 'path';      // Pour gérer les chemins de dossiers
-import { v4 as uuidv4 } from 'uuid'; // Pour générer le nom physique unique
+import fs from 'fs/promises'; // asynchrone
+import { existsSync } from 'fs'; // synchrone
+
+import path from 'path';      
+import { v4 as uuidv4 } from 'uuid'; 
 import { User, File, Folder } from '../models';
 
 // Le chemin racine défini dans ton docker-compose
@@ -26,10 +28,8 @@ class FileService {
         const physicalKey = uuidv4(); 
         const userDir = path.join(UPLOAD_ROOT, userId.toString());
         
-        // On s'assure que le dossier de l'utilisateur existe, sinon on le crée
         await fs.mkdir(userDir, { recursive: true });
 
-        // Chemin complet du fichier final
         const physicalPath = path.join(userDir, physicalKey);
 
         try {
@@ -67,6 +67,31 @@ class FileService {
         if (!file) throw new Error("Fichier introuvable ou accès refusé");
 
         return path.join(UPLOAD_ROOT, userId.toString(), file.physical_key);
+    }
+
+    async getFileForDownload(fileId: number, userId: number) {
+        // Récupérer les métadonnées en BDD
+        const file = await File.findOne({
+            where: { id: fileId, user_id: userId }
+        });
+
+        if (!file) {
+            throw new Error("Fichier introuvable ou accès interdit.");
+        }
+
+        // Construire le chemin absolu vers le fichier physique
+        const filePath = path.join('/app/uploads', userId.toString(), file.physical_key);
+
+        // Vérifier que le fichier existe physiquement sur le disque
+        if (!existsSync(filePath)) {
+            throw new Error("Erreur critique : Le fichier physique est introuvable.");
+        }
+
+        return {
+            path: filePath,
+            name: file.name,
+            mimeType: file.mime_type
+        };
     }
 }
 

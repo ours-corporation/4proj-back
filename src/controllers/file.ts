@@ -22,3 +22,29 @@ export const uploadFile = async (req: Request, res: Response) => {
         res.status(500).json({ message: error.message });
     }
 };
+
+export const downloadFile = async (req: Request, res: Response) => {
+    try {
+        const fileId = parseInt(req.params.id);
+        // @ts-ignore
+        const userId = req.user.id;
+
+        const fileData = await FileService.getFileForDownload(fileId, userId);
+
+        res.download(fileData.path, fileData.name, (err) => {
+            if (err) {
+                console.error("Erreur lors de l'envoi du fichier :", err);
+                if (!res.headersSent) {
+                    res.status(500).send("Erreur lors du téléchargement.");
+                }
+            }
+        });
+
+    } catch (error: any) {
+        console.error(error);
+        if (error.message.includes("introuvable") || error.message.includes("interdit")) {
+            return res.status(404).json({ message: error.message });
+        }
+        res.status(500).json({ message: "Erreur serveur." });
+    }
+};
