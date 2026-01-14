@@ -5,10 +5,11 @@ interface UserAttributes {
     id?: number;
     username?: string | null;
     email: string;
-    password: string;
+    password?: string | null;
     quota_id?: number | null;
     used_bytes?: bigint;
     refresh_token?: string | null;
+    google_id?: string | null;
     created_at?: Date;
     updated_at?: Date;
 }
@@ -17,10 +18,11 @@ class User extends Model<UserAttributes> implements UserAttributes {
     public id!: number;
     public username!: string;
     public email!: string;
-    public password!: string;
+    public password!: string | null;
     public quota_id!: number | null;
     public used_bytes!: bigint;
     declare refresh_token?: string | null;
+    declare google_id?: string | null;
     public created_at!: Date;
     public updated_at!: Date;
 }
@@ -43,7 +45,7 @@ User.init(
         },
         password: {
             type: DataTypes.STRING,
-            allowNull: false,
+            allowNull: true,
         },
         quota_id: {
             type: DataTypes.INTEGER,
@@ -61,6 +63,11 @@ User.init(
         refresh_token: {
             type: DataTypes.STRING,
             allowNull: true,
+        },
+        google_id: {
+            type: DataTypes.STRING,
+            allowNull: true,
+            unique: true,
         },
         created_at: {
             type: DataTypes.DATE,
@@ -83,7 +90,7 @@ User.init(
                 attributes: ['id', 'email'],
             },
             withoutPassword: {
-                attributes: { exclude: ['password', "refresh_token" ] },
+                attributes: { exclude: ['password', "refresh_token", "google_id"] }
             },
         },
     }
