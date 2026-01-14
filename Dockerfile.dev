@@ -1,0 +1,26 @@
+# Dockerfile.dev
+FROM node:25-alpine
+
+# Définir le répertoire de travail
+WORKDIR /app
+
+# Variables d'environnement
+ENV NODE_ENV=development
+
+# Copier uniquement package.json et package-lock.json pour profiter du cache Docker
+COPY package*.json ./
+
+# Installer les dépendances
+RUN npm ci
+
+# Installer ts-node-dev globalement pour dev
+RUN npm install -g ts-node-dev
+
+# Copier le reste du code
+COPY . .
+
+# Exposer le port
+EXPOSE 3000
+
+# Commande de démarrage
+CMD ["npm", "run", "dev"]
