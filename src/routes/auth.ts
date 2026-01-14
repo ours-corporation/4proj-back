@@ -1,5 +1,5 @@
 import { Router, Request, Response } from 'express';
-import {register, login, refresh, logout} from "../controllers/auth";
+import {register, login, refresh, logout, authWithGoogle} from "../controllers/auth";
 
 const authRouter = Router();
 
@@ -187,6 +187,10 @@ authRouter.post('/refresh', async (req: Request, res: Response) => {
  */
 authRouter.post('/logout', async (req: Request, res: Response) => {
     return logout(req, res);
+});
+
+authRouter.post('/auth/google', async (req: Request, res: Response) => {
+    return authWithGoogle(req, res);
 });
 
 
