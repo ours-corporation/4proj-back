@@ -1,5 +1,6 @@
 import { DataTypes, Model } from 'sequelize';
 import sequelize from '../config/sequelize';
+import Quota from './Quota';
 
 interface UserAttributes {
     id?: number;
@@ -27,6 +28,14 @@ class User extends Model<UserAttributes> implements UserAttributes {
     declare github_id?: string | null;
     public created_at!: Date;
     public updated_at!: Date;
+
+    public quota?: Quota;
+
+    public async loadQuotaIfRequested(includeQuota: boolean): Promise<void> {
+        if (includeQuota) {
+            await this.reload({ include: ['quota'] });
+        }
+    }
 }
 
 User.init(
@@ -102,5 +111,7 @@ User.init(
         },
     }
 );
+
+User.belongsTo(Quota, { foreignKey: 'quota_id', as: 'quota' });
 
 export default User;

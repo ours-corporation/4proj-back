@@ -1,20 +1,29 @@
 import {Request, Response} from 'express';
 import User from '../models/User';
-import {updateUserValidator} from "../validator/user";
 import {compareString, hashString} from '../services/hash';
 
 export const getMe = async (req: Request, res: Response) => {
     try {
+        const includeQuota = req.query.quota === 'true';
+
         const userId = (req as any).user.id;
         const user = await User.scope('withoutPassword').findByPk(userId);
+
         if (!user) {
             return res.status(404).json({ message: 'Utilisateur introuvable' });
         }
-        return res.json({ user });
+
+        if (includeQuota) {
+            await user.reload({ include: ['quota'] });
+        }
+        console.log(user);
+        return res.json(user);
     } catch (error) {
+        console.error(error);
         return res.status(500).json({ message: 'Erreur serveur' });
     }
 };
+
 
 export const updateMe = async (req: Request, res: Response) => {
     try {
@@ -25,8 +34,6 @@ export const updateMe = async (req: Request, res: Response) => {
         if (!actualEmail) {
             return res.status(404).json({ message: 'Utilisateur introuvable' });
         }
-
-        if (await updateUserValidator(req, res, actualEmail)) return;
 
         const user = await User.findByPk(userId);
         if (!user) {
