@@ -10,6 +10,7 @@ interface UserAttributes {
     used_bytes?: bigint;
     refresh_token?: string | null;
     google_id?: string | null;
+    github_id?: string | null;
     created_at?: Date;
     updated_at?: Date;
 }
@@ -23,6 +24,7 @@ class User extends Model<UserAttributes> implements UserAttributes {
     public used_bytes!: bigint;
     declare refresh_token?: string | null;
     declare google_id?: string | null;
+    declare github_id?: string | null;
     public created_at!: Date;
     public updated_at!: Date;
 }
@@ -65,6 +67,11 @@ User.init(
             allowNull: true,
         },
         google_id: {
+            type: DataTypes.STRING,
+            allowNull: true,
+            unique: true,
+        },
+        github_id: {
             type: DataTypes.STRING,
             allowNull: true,
             unique: true,

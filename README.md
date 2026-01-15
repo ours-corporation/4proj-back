@@ -5,12 +5,12 @@
 
 Développement : 
 ```bash
-  docker-compose up --build app
+  docker-compose up --build
 ```
 
 Production : 
 ```bash
-  docker-compose up --build app_prod
+  docker-compose up --build
 ```
 
 ## Stop the project

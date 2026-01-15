@@ -14,7 +14,6 @@ export const validate = (schema: ZodSchema) => async (req: Request, res: Respons
         if (error instanceof ZodError) {
             return res.status(400).json({
                 message: "Données invalides",
-                // ✅ CORRECTION ICI : Utilisez .issues au lieu de .errors
                 errors: error.issues.map((e) => ({
                     field: e.path.join('.'),
                     message: e.message
