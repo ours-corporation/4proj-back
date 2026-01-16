@@ -48,3 +48,36 @@ export const downloadFile = async (req: Request, res: Response) => {
         res.status(500).json({ message: "Erreur serveur." });
     }
 };
+
+export const getRecentFiles = async (req: Request, res: Response) => {
+    try {
+        // @ts-ignore
+        const limit = req.query.limit as number; 
+        
+        // @ts-ignore
+        const files = await FileService.getRecentFiles(req.user.id, limit);
+        res.json(files);
+    } catch (error: any) {
+        console.error(error);
+        res.status(500).json({ message: "Erreur serveur" });
+    }
+};
+
+export const updateFile = async (req: Request, res: Response) => {
+    try {
+        const id = parseInt(req.params.id);
+        const { name } = req.body; // On extrait les champs modifiables
+
+        // @ts-ignore
+        const updatedFile = await FileService.updateFile(id, req.user.id, { name });
+        
+        res.json(updatedFile);
+    } catch (error: any) {
+        console.error(error);
+        if (error.message.includes("introuvable")) {
+            res.status(404).json({ message: error.message });
+        } else {
+            res.status(500).json({ message: "Erreur serveur" });
+        }
+    }
+};

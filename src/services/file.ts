@@ -59,7 +59,6 @@ class FileService {
         }
     }
 
-
     async getPhysicalPath(fileId: number, userId: number): Promise<string> {
         const file = await File.findOne({ where: { id: fileId, user_id: userId } });
         
@@ -93,6 +92,27 @@ class FileService {
         };
     }
 
+    async getRecentFiles(userId: number, limit: number) {
+        return await File.findAll({
+            where: {
+                user_id: userId,
+                trashed_at: null
+            },
+            order: [['createdAt', 'DESC']],
+            limit: limit
+        });
+    }
+
+    async updateFile(fileId: number, userId: number, updates: { name?: string }) {
+        const file = await File.findOne({ where: { id: fileId, user_id: userId } });
+    
+        if (!file) {
+            throw new Error("Fichier introuvable ou accès refusé.");
+        }
+
+        await file.update(updates);
+        return file;
+    }
 }
 
 export default new FileService();
