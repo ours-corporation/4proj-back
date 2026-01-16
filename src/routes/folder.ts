@@ -63,12 +63,7 @@ const folderRouter = Router();
  *       403:
  *         description: Accès interdit au dossier parent
  */
-folderRouter.post(
-  '/',
-  requireAuth,
-  validate(createFolderSchema),
-  createFolder
-);
+folderRouter.post( '/', requireAuth, validate(createFolderSchema), createFolder);
 
 /**
  * @swagger
@@ -125,11 +120,7 @@ folderRouter.post(
  *                       size_bytes:
  *                         type: integer
  */
-folderRouter.get(
-  '/',
-  requireAuth,
-  getFolder
-);
+folderRouter.get('/', requireAuth, getFolder);
 
 /**
  * @swagger
@@ -202,11 +193,6 @@ folderRouter.get(
  *       403:
  *         description: Accès interdit
  */
-folderRouter.get(
-  '/:id',
-  requireAuth,
-  validate(getFolderSchema),
-  getFolder
-);
+folderRouter.get('/:id', requireAuth, validate(getFolderSchema), getFolder);
 
 export default folderRouter;

@@ -1,6 +1,5 @@
 import { Request, Response } from 'express';
 import User from '../models/User';
-import {loginValidator, registerValidator} from '../validator/auth';
 import { compareString, hashString } from '../services/hash';
 import { generateAccessToken, generateRefreshToken, verifyRefreshToken } from '../services/jwt';
 import {constants} from "node:os";
@@ -10,8 +9,6 @@ export const login = async (req: Request, res: Response) => {
     try {
         const { email, password } = req.body;
 
-        if (await loginValidator(req, res)) return;
-
         const user = await User.findOne({ where: { email } });
         if (!user) return res.status(401).json({ error: 'Invalid credentials' });
 
@@ -20,7 +17,7 @@ export const login = async (req: Request, res: Response) => {
         const ok = await compareString(password, user.password);
         if (!ok) return res.status(401).json({ error: 'Invalid credentials' });
 
-        const accessToken = generateAccessToken({ id: user.id, email: user.email });
+        const accessToken = generateAccessToken({ id: user.id, email: user.email, username: user.username });
         const refreshToken = generateRefreshToken({ id: user.id });
 
         const hashedRefresh = await hashString(refreshToken);
@@ -45,7 +42,12 @@ export const refresh = async (req: Request, res: Response) => {
     try {
         // support body or cookie
         const refreshToken = req.body.refreshToken || req.cookies?.refreshToken;
+
         if (!refreshToken) return res.status(400).json({ error: 'No refresh token provided' });
+
+        if (typeof refreshToken !== 'string') {
+            return res.status(400).json({ error: 'Invalid refresh token format' });
+        }
 
         let payload: any;
         try {
@@ -60,7 +62,7 @@ export const refresh = async (req: Request, res: Response) => {
         const matches = await compareString(refreshToken, user.refresh_token);
         if (!matches) return res.status(401).json({ error: 'Invalid refresh token' });
 
-        const newAccess = generateAccessToken({ id: user.id, email: user.email });
+        const newAccess = generateAccessToken({ id: user.id, email: user.email , username: user.username });
         const newRefresh = generateRefreshToken({ id: user.id });
         const newHashed = await hashString(newRefresh);
         await user.update({ refresh_token: newHashed });
@@ -108,8 +110,6 @@ export const register = async (req: Request, res: Response) => {
     try {
         const { username, email, password } = req.body;
 
-        if (await registerValidator(req, res)) return;
-
         //todo : trouver un moyen d'avoir de vraies faux usernames
         let newUsername: string;
         if(username == null || username == "") {
@@ -135,7 +135,6 @@ export const register = async (req: Request, res: Response) => {
         res.status(201).json({ user });
 
     } catch (error) {
-        console.error('Error during user registration:', error);
         res.status(500).json({ error: 'Internal Server Error' });
     }
 };
@@ -163,8 +162,6 @@ export const authWithGoogle = async (req: Request, res: Response) => {
             },
             body: params.toString(),
         });
-
-        console.log(rep.status, await rep.clone().text());
 
         if (!rep.ok) {
             return res.status(401).json({ error: "Échec de l’authentification Google" });
@@ -215,13 +212,104 @@ export const authWithGoogle = async (req: Request, res: Response) => {
 
         return issueTokens(res, user);
     } catch (err) {
-        console.error(err);
+        return res.status(500).json({ error: "Erreur serveur" });
+    }
+};
+
+export const authWithGithub = async (req: Request, res: Response) => {
+    console.log("je suis la");
+    try {
+        const { code } = req.body;
+
+        if (!code) {
+            return res.status(400).json({ error: "Authorization code is required" });
+        }
+
+        const rep = await fetch("https://github.com/login/oauth/access_token", {
+            method: "POST",
+            headers: {
+                "Accept": "application/json",
+                "Content-Type": "application/x-www-form-urlencoded",
+            },
+            body: new URLSearchParams({
+                client_id: process.env.GITHUB_CLIENT_ID!,
+                client_secret: process.env.GITHUB_CLIENT_SECRET!,
+                code,
+                redirect_uri: process.env.GITHUB_REDIRECT_URI!,
+            }).toString(),
+        });
+
+        if (!rep.ok) {
+            return res.status(401).json({ error: "Échec de l’authentification Github" });
+        }
+
+        const data = await rep.json();
+        const { access_token } = data;
+
+        if (!access_token) {
+            return res.status(500).json({ error: "Token Github invalide" });
+        }
+
+        const repGetUser = await fetch("https://api.github.com/user", {
+            method: "GET",
+            headers: {
+                "Accept": "application/json",
+                'Authorization': `Bearer ${access_token}`,
+            },
+        });
+
+        const dataUser = await repGetUser.json();
+        const github_id = dataUser.id;
+        const username = dataUser.login;
+
+        const repGetEmails = await fetch("https://api.github.com/user/emails", {
+            method: "GET",
+            headers: {
+                "Accept": "application/json",
+                'Authorization': `Bearer ${access_token}`,
+            },
+        });
+
+        const dataEmails = await repGetEmails.json();
+        const primaryEmailObj = dataEmails.find((emailObj: any) => emailObj.primary && emailObj.verified);
+        if (!primaryEmailObj) {
+            return res.status(500).json({ error: "Aucun email principal vérifié trouvé sur le compte Github" });
+        }
+        const email = primaryEmailObj.email;
+
+
+
+        let user = await User.findOne({ where: { email } });
+
+        if (user) {
+            if (user.github_id == github_id) {
+                // reconnexion OK
+            } else if (!user.github_id) {
+                return res.status(409).json({
+                    error: "Un compte avec cet email existe déjà sans Github.",
+                });
+            } else {
+                return res.status(401).json({
+                    error: "Compte Github invalide.",
+                });
+            }
+        } else {
+            user = await User.create({
+                username,
+                email,
+                github_id,
+                quota_id: 1,
+            });
+        }
+
+        return issueTokens(res, user);
+    } catch (err) {
         return res.status(500).json({ error: "Erreur serveur" });
     }
 };
 
 const issueTokens = async (res: Response, user: User) => {
-    const accessToken = generateAccessToken({id: user.id, email: user.email,});
+    const accessToken = generateAccessToken({id: user.id, email: user.email, username: user.username});
 
     const refreshToken = generateRefreshToken({ id: user.id });
 
