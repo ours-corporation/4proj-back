@@ -1,71 +1,31 @@
-import { Request, Response } from 'express';
-import User from '../models/User';
+import { z } from 'zod';
 
-interface RegisterBody {
-    username?: string;
-    email?: string;
-    password?: string;
-}
+export const loginValidatorSchema = z.object({
+    body: z.object({
+        email: z.string({ message: "L'email est obligatoire" })
+                 .email("Le format de l'email est invalide"),
+        password: z.string({ message: "Le mot de passe est obligatoire" })
+    })
+});
 
-export const loginValidator = async (req: Request, res: Response) => {
-    try {
-        const body: RegisterBody = req.body;
+export const registerValidatorSchema = z.object({
+    body: z.object({
+        username: z
+            .string()
+            .optional()
+            .refine((val) => !val || val.length >= 3, {
+                message: "Le nom d'utilisateur doit contenir au moins 3 caractères",
+            })
+            .refine((val) => !val || val.length <= 30, {
+                message: "Le nom d'utilisateur ne peut pas dépasser 30 caractères",
+            })
+            .refine(
+                (val) => !val || /^[a-zA-Z0-9_-]+$/.test(val),
+                { message: "Le nom d'utilisateur ne peut contenir que des lettres, des chiffres, des underscores (_) et des tirets (-)" }
+            ),
 
-        if (!body.email || !body.password) {
-            return res.status(400).json({ error: 'Email and password are required' });
-        }
-
-        if (!body.email.includes('@')) {
-            return res.status(400).json({ error: 'Invalid email format' });
-        }
-
-        return null;
-    } catch (error) {
-        return res.status(500).json({ error: 'Internal Server Error' });
-    }
-}
-
-export const registerValidator = async (req: Request, res: Response) => {
-    try {
-        const body: RegisterBody = req.body;
-
-        if (body.username) {
-            if (body.username.length < 3 || body.username.length > 30) {
-                return res.status(400).json({ error: 'Username must be between 3 and 30 characters' });
-            }
-        }
-
-        if (!body.email || !body.password) {
-            return res.status(400).json({ error: 'Email and password are required' });
-        }
-
-        if (!body.email.includes('@')) {
-            return res.status(400).json({ error: 'Invalid email format' });
-        }
-
-        if (body.password.length < 12) {
-            return res.status(400).json({ error: 'Password must be at least 6 characters' });
-        }
-        if (!/[A-Z]/.test(body.password)) {
-            return res.status(400).json({ error: 'Password must contain at least one uppercase letter' });
-        }
-        if (!/[a-z]/.test(body.password)) {
-            return res.status(400).json({ error: 'Password must contain at least one lowercase letter' });
-        }
-        if (!/[0-9]/.test(body.password)) {
-            return res.status(400).json({ error: 'Password must contain at least one number' });
-        }
-        if (!/[!@#$%^&*]/.test(body.password)) {
-            return res.status(400).json({ error: 'Password must contain at least one special character (! @ # $ % ^ & *)' });
-        }
-
-        const existingUser = await User.findOne({ where: { email: body.email } });
-        if (existingUser) {
-            return res.status(409).json({ error: 'Email already in use' });
-        }
-
-        return null;
-    } catch (error) {
-        return res.status(500).json({ error: 'Internal Server Error' });
-    }
-}
+        email: z.string({ message: "L'email est obligatoire" })
+                 .email("Le format de l'email est invalide"),
+        password: z.string({ message: "Le mot de passe est obligatoire" })
+    })
+})

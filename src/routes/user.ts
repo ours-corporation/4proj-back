@@ -1,5 +1,7 @@
 import { Router, Request, Response } from 'express';
 import { getMe, updateMe, deleteMe, updatePassword, getUserById } from "../controllers/user";
+import { validate } from '../middleware/validate';
+import {updateUserValidatorSchema} from "../validator/user";
 
 const usersRouter = Router();
 
@@ -224,7 +226,7 @@ usersRouter.delete('/me', async (req: Request, res: Response) => {
  *                   type: string
  *                   example: "Erreur serveur"
  */
-usersRouter.put('/me/update-password', async (req: Request, res: Response) => {
+usersRouter.put('/me/update-password', validate(updateUserValidatorSchema), async (req: Request, res: Response) => {
     return updatePassword(req, res);
 });
 

@@ -1,5 +1,6 @@
 import { DataTypes, Model } from 'sequelize';
 import sequelize from '../config/sequelize';
+import Quota from './Quota';
 
 interface UserAttributes {
     id?: number;
@@ -10,6 +11,7 @@ interface UserAttributes {
     used_bytes?: bigint;
     refresh_token?: string | null;
     google_id?: string | null;
+    github_id?: string | null;
     created_at?: Date;
     updated_at?: Date;
 }
@@ -23,8 +25,17 @@ class User extends Model<UserAttributes> implements UserAttributes {
     public used_bytes!: bigint;
     declare refresh_token?: string | null;
     declare google_id?: string | null;
+    declare github_id?: string | null;
     public created_at!: Date;
     public updated_at!: Date;
+
+    public quota?: Quota;
+
+    public async loadQuotaIfRequested(includeQuota: boolean): Promise<void> {
+        if (includeQuota) {
+            await this.reload({ include: ['quota'] });
+        }
+    }
 }
 
 User.init(
@@ -69,6 +80,11 @@ User.init(
             allowNull: true,
             unique: true,
         },
+        github_id: {
+            type: DataTypes.STRING,
+            allowNull: true,
+            unique: true,
+        },
         created_at: {
             type: DataTypes.DATE,
             allowNull: false,
@@ -95,5 +111,7 @@ User.init(
         },
     }
 );
+
+User.belongsTo(Quota, { foreignKey: 'quota_id', as: 'quota' });
 
 export default User;

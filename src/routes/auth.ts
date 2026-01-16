@@ -1,5 +1,7 @@
 import { Router, Request, Response } from 'express';
-import {register, login, refresh, logout, authWithGoogle} from "../controllers/auth";
+import {register, login, refresh, logout, authWithGoogle, authWithGithub} from "../controllers/auth";
+import {validate} from "../middleware/validate";
+import {loginValidatorSchema, registerValidatorSchema} from "../validator/auth";
 
 const authRouter = Router();
 
@@ -39,7 +41,7 @@ const authRouter = Router();
  *                 accessToken:
  *                   type: string
  */
-authRouter.post('/login', (req: Request, res: Response) => {
+authRouter.post('/login', validate(loginValidatorSchema), (req: Request, res: Response) => {
     return login(req, res);
 });
 
@@ -77,7 +79,7 @@ authRouter.post('/login', (req: Request, res: Response) => {
  *                     email:
  *                       type: string
  */
-authRouter.post('/register', (req: Request, res: Response) => {
+authRouter.post('/register', validate(registerValidatorSchema), (req: Request, res: Response) => {
     return register(req, res);
 });
 
@@ -193,5 +195,8 @@ authRouter.post('/auth/google', async (req: Request, res: Response) => {
     return authWithGoogle(req, res);
 });
 
+authRouter.post('/auth/github', async (req: Request, res: Response) => {
+    return authWithGithub(req, res);
+});
 
 export default authRouter;
