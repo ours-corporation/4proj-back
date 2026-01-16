@@ -11,6 +11,8 @@ import { requireAuth } from './middleware/auth';
 import cookieParser from 'cookie-parser';
 import folderRouter from './routes/folder';
 import trashRouter from './routes/trash';
+import shareRouter from './routes/share';
+import publicRouter from './routes/public';
 
 dotenv.config();
 
@@ -51,6 +53,10 @@ apiRouter.use('/users', requireAuth, usersRouter);
 apiRouter.use('/files', requireAuth, filesRouter)
 apiRouter.use('/folders', requireAuth, folderRouter);
 apiRouter.use('/trash', requireAuth, trashRouter);
+apiRouter.use('/shares', requireAuth, shareRouter);
+apiRouter.use('/public', publicRouter);
+
+// ...
 
 app.use('/api', apiRouter);
 
