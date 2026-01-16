@@ -1,15 +1,14 @@
 import { Request, Response } from 'express';
-import User from '../models/User';
+import { User, Quota } from '../models';
 import { compareString, hashString } from '../services/hash';
 import { generateAccessToken, generateRefreshToken, verifyRefreshToken } from '../services/jwt';
-import {constants} from "node:os";
 import jwt from "jsonwebtoken";
 
 export const login = async (req: Request, res: Response) => {
     try {
         const { email, password } = req.body;
 
-        const user = await User.findOne({ where: { email } });
+        const user = await User.findOne({ where: { email }, include: [Quota] });
         if (!user) return res.status(401).json({ error: 'Invalid credentials' });
 
         if(!user.password || user.google_id) return res.status(401).json( { error: 'Invalid credentials' } );

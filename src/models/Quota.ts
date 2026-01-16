@@ -1,48 +1,41 @@
-import { DataTypes, Model } from 'sequelize';
-import sequelize from '../config/sequelize';
+import { Table, Column, Model, DataType, HasMany, PrimaryKey, AutoIncrement } from 'sequelize-typescript';
+import { User } from './user';
 
-interface QuotaAttributes {
-    id?: number; // autoIncrement
-    name: string;
-    quota_bytes?: bigint;
-    price?: number;
+@Table({
+    tableName: 'quota',
+    timestamps: false
+})
+export class Quota extends Model {
+
+    @PrimaryKey
+    @AutoIncrement
+    @Column(DataType.INTEGER)
+    id!: number;
+
+    @Column({
+        type: DataType.STRING,
+        allowNull: false
+    })
+    name!: string;
+
+    @Column({
+        type: DataType.BIGINT,
+        allowNull: false,
+        defaultValue: 32212254720 // 30 Go par défaut
+    })
+    quota_bytes!: number;
+
+    @Column({
+        type: DataType.DECIMAL(10, 2),
+        allowNull: false,
+        defaultValue: 0.00
+    })
+    price!: number;
+
+    // --- RELATIONS ---
+    
+    @HasMany(() => User)
+    users!: User[];
 }
-
-class Quota extends Model<QuotaAttributes> implements QuotaAttributes {
-    public id!: number;
-    public name!: string;
-    public quota_bytes!: bigint;
-    public price!: number;
-}
-
-Quota.init(
-    {
-        id: {
-            type: DataTypes.INTEGER,
-            autoIncrement: true,
-            primaryKey: true,
-        },
-        name: {
-            type: DataTypes.STRING,
-            allowNull: false,
-        },
-        quota_bytes: {
-            type: DataTypes.BIGINT,
-            allowNull: false,
-            defaultValue: 32212254720, // 30 Go par défaut
-        },
-        price: {
-            type: DataTypes.DECIMAL(10, 2),
-            allowNull: false,
-            defaultValue: 0.0,
-        },
-    },
-    {
-        sequelize,
-        modelName: 'Quota',
-        tableName: 'quota',
-        timestamps: false,
-    }
-);
 
 export default Quota;

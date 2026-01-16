@@ -1,74 +1,54 @@
-import { DataTypes, Model } from 'sequelize';
-import sequelize from '../config/sequelize';
+import { Table, Column, Model, DataType, ForeignKey, BelongsTo, HasMany, PrimaryKey, AutoIncrement,Default } from 'sequelize-typescript'; // Ajoute 'Default' aux imports
+import { User } from './user';
+import { File } from './file';
 
-interface FolderAttributes {
-    id?: number;
-    user_id: number;
-    parent_id?: number | null; // Null si à la racine
-    name: string;
-    trashed_at?: Date | null;
-    created_at?: Date;
-    updated_at?: Date;
+@Table({
+    tableName: 'folders',
+    timestamps: true
+})
+export class Folder extends Model {
+
+    @PrimaryKey
+    @AutoIncrement
+    @Column(DataType.INTEGER)
+    id!: number;
+
+    @Column({ type: DataType.STRING, allowNull: false })
+    name!: string;
+
+    @ForeignKey(() => User)
+    @Column({ type: DataType.INTEGER, allowNull: false })
+    user_id!: number;
+
+    @BelongsTo(() => User)
+    user!: User;
+
+    @ForeignKey(() => Folder)
+    @Column({ type: DataType.INTEGER, allowNull: true })
+    parent_id!: number | null;
+
+    @BelongsTo(() => Folder)
+    parent!: Folder | null;
+
+    @HasMany(() => Folder)
+    children!: Folder[];
+
+    @HasMany(() => File)
+    files!: File[];
+
+    @Column({ type: DataType.DATE, allowNull: true, defaultValue: null })
+    trashed_at!: Date | null;
+
+    @Column({ type: DataType.STRING, allowNull: true, defaultValue: null })
+    deletion_id!: string | null;
+
+    @Default(DataType.NOW)
+    @Column({ field: 'created_at', type: DataType.DATE })
+    createdAt!: Date;
+
+    @Default(DataType.NOW)
+    @Column({ field: 'updated_at', type: DataType.DATE })
+    updatedAt!: Date;
 }
-
-class Folder extends Model<FolderAttributes> implements FolderAttributes {
-    public id!: number;
-    public user_id!: number;
-    public parent_id!: number | null;
-    public name!: string;
-    public trashed_at!: Date | null;
-    public created_at!: Date;
-    public updated_at!: Date;
-}
-
-Folder.init(
-    {
-        id: {
-            type: DataTypes.INTEGER,
-            autoIncrement: true,
-            primaryKey: true,
-        },
-        user_id: {
-            type: DataTypes.INTEGER,
-            allowNull: false,
-            references: {
-                model: 'User', // Référence au modèle User
-                key: 'id',
-            },
-        },
-        parent_id: {
-            type: DataTypes.INTEGER,
-            allowNull: true,
-            references: {
-                model: 'Folder', // Auto-référence pour les sous-dossiers
-                key: 'id',
-            },
-        },
-        name: {
-            type: DataTypes.STRING,
-            allowNull: false,
-        },
-        trashed_at: {
-            type: DataTypes.DATE,
-            allowNull: true,
-        },
-        created_at: {
-            type: DataTypes.DATE,
-            allowNull: false,
-            defaultValue: DataTypes.NOW,
-        },
-        updated_at: {
-            type: DataTypes.DATE,
-            allowNull: false,
-            defaultValue: DataTypes.NOW,
-        },
-    },
-    {
-        sequelize,
-        modelName: 'Folder',
-        tableName: 'folders',
-        timestamps: false, // Vous gérez vos propres timestamps created_at/updated_at
-    }
-);
 
 export default Folder;

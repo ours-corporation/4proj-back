@@ -1,4 +1,5 @@
-import { Sequelize } from "sequelize";
+import { Sequelize } from "sequelize-typescript";
+import { Folder, Quota, User, File } from "../models";
 
 const sequelize = new Sequelize(
     process.env.DB_NAME || "database_name",
@@ -9,6 +10,7 @@ const sequelize = new Sequelize(
         port: Number(process.env.DB_PORT) || 5432,
         dialect: "postgres",
         logging: false, // true pour voir les requêtes SQL
+        models: [User, Quota, Folder, File],
     }
 );
 

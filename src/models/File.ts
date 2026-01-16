@@ -1,99 +1,57 @@
-import { DataTypes, Model } from 'sequelize';
-import sequelize from '../config/sequelize';
+import { Table, Column, Model, DataType, ForeignKey, BelongsTo, PrimaryKey, AutoIncrement,Default } from 'sequelize-typescript';
+import { User } from './user';
+import { Folder } from './folder';
 
-interface FileAttributes {
-    id?: number;
-    user_id: number;
-    folder_id?: number | null; // Null si le fichier est à la racine
-    name: string;
-    physical_key: string; // L'UUID du fichier sur le disque
-    size_bytes: bigint;
-    mime_type?: string | null;
-    trashed_at?: Date | null;
-    deleted_at?: Date | null;
-    created_at?: Date;
-    updated_at?: Date;
+@Table({
+    tableName: 'files',
+    timestamps: true 
+})
+export class File extends Model {
+
+    @PrimaryKey
+    @AutoIncrement
+    @Column(DataType.INTEGER)
+    id!: number;
+
+    @Column({ type: DataType.STRING, allowNull: false })
+    name!: string;
+
+    @Column({ type: DataType.BIGINT, allowNull: false })
+    size_bytes!: number;
+
+    @Column({ type: DataType.STRING, allowNull: false })
+    mime_type!: string;
+
+    @Column({ type: DataType.STRING, allowNull: false, unique: true })
+    physical_key!: string;
+
+    @ForeignKey(() => User)
+    @Column({ type: DataType.INTEGER, allowNull: false })
+    user_id!: number;
+
+    @BelongsTo(() => User)
+    user!: User;
+
+    @ForeignKey(() => Folder)
+    @Column({ type: DataType.INTEGER, allowNull: true })
+    folder_id!: number | null;
+
+    @BelongsTo(() => Folder)
+    folder!: Folder | null;
+
+    @Column({ type: DataType.DATE, allowNull: true, defaultValue: null })
+    trashed_at!: Date | null;
+
+    @Column({ type: DataType.STRING, allowNull: true, defaultValue: null })
+    deletion_id!: string | null;
+
+    @Default(DataType.NOW)
+    @Column({ field: 'created_at', type: DataType.DATE })
+    createdAt!: Date;
+
+    @Default(DataType.NOW)
+    @Column({ field: 'updated_at', type: DataType.DATE })
+    updatedAt!: Date;
 }
-
-class File extends Model<FileAttributes> implements FileAttributes {
-    public id!: number;
-    public user_id!: number;
-    public folder_id!: number | null;
-    public name!: string;
-    public physical_key!: string;
-    public size_bytes!: bigint;
-    public mime_type!: string | null;
-    public trashed_at!: Date | null;
-    public deleted_at!: Date | null;
-    public created_at!: Date;
-    public updated_at!: Date;
-}
-
-File.init(
-    {
-        id: {
-            type: DataTypes.INTEGER,
-            autoIncrement: true,
-            primaryKey: true,
-        },
-        user_id: {
-            type: DataTypes.INTEGER,
-            allowNull: false,
-            references: {
-                model: 'User',
-                key: 'id',
-            },
-        },
-        folder_id: {
-            type: DataTypes.INTEGER,
-            allowNull: true,
-            references: {
-                model: 'Folder',
-                key: 'id',
-            },
-        },
-        name: {
-            type: DataTypes.STRING,
-            allowNull: false,
-        },
-        physical_key: {
-            type: DataTypes.STRING,
-            allowNull: false,
-            unique: true, // Sécurité : pas de doublons d'UUID
-        },
-        size_bytes: {
-            type: DataTypes.BIGINT,
-            allowNull: false,
-        },
-        mime_type: {
-            type: DataTypes.STRING,
-            allowNull: true,
-        },
-        trashed_at: {
-            type: DataTypes.DATE,
-            allowNull: true,
-        },
-        deleted_at: {
-            type: DataTypes.DATE,
-            allowNull: true,
-        },
-        created_at: {
-            type: DataTypes.DATE,
-            allowNull: false,
-            defaultValue: DataTypes.NOW,
-        },
-        updated_at: {
-            type: DataTypes.DATE,
-            allowNull: false,
-            defaultValue: DataTypes.NOW,
-        },
-    },
-    {
-        sequelize,
-        modelName: 'File',
-        tableName: 'files',
-        timestamps: false,
-    }
-);
 
 export default File;

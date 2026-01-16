@@ -1,9 +1,8 @@
-import fs from 'fs/promises'; // asynchrone
+import fs, { unlink } from 'fs/promises'; // asynchrone
 import { existsSync } from 'fs'; // synchrone
-
 import path from 'path';      
 import { v4 as uuidv4 } from 'uuid'; 
-import { User, File, Folder } from '../models';
+import { User, File, Folder, Quota } from '../models';
 
 // Le chemin racine défini dans ton docker-compose
 const UPLOAD_ROOT = '/app/uploads';
@@ -13,7 +12,7 @@ class FileService {
     
     async uploadFile(userId: number, file: Express.Multer.File, parentId: number | null) {
         
-        const user = await User.findByPk(userId, { include: ['Quota'] });
+        const user = await User.findByPk(userId, { include: [Quota] });
         if (!user) throw new Error("Utilisateur introuvable");
 
         // Vérification du quota
@@ -45,7 +44,7 @@ class FileService {
             });
 
             // Mise à jour de l'espace utilisé par l'utilisateur
-            user.used_bytes = (currentUsage + fileSize); 
+            user.used_bytes = Number(currentUsage + fileSize); 
             await user.save();
 
             return newFile;
@@ -93,6 +92,7 @@ class FileService {
             mimeType: file.mime_type
         };
     }
+
 }
 
 export default new FileService();

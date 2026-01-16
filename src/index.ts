@@ -1,6 +1,7 @@
+import 'reflect-metadata'; 
+import './config/sequelize';
 import express, { Request, Response } from 'express';
 import dotenv from 'dotenv';
-import User from './models/User';
 import cors from 'cors';
 import { setupSwagger } from './swagger';
 import authRoutes from './routes/auth';
@@ -9,6 +10,7 @@ import filesRouter from './routes/file';
 import { requireAuth } from './middleware/auth';
 import cookieParser from 'cookie-parser';
 import folderRouter from './routes/folder';
+import trashRouter from './routes/trash';
 
 dotenv.config();
 
@@ -20,6 +22,14 @@ const apiRouter = express.Router();
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+app.use((req, res, next) => {
+    if (req.path.includes('/login') || req.path.includes('/auth')) {
+        console.log(`[DEBUG] Requête reçue sur ${req.path}`);
+        console.log('[DEBUG] Headers Content-Type:', req.headers['content-type']);
+        console.log('[DEBUG] Body:', req.body);
+    }
+    next();
+});
 
 app.use(cors({
     origin: "http://localhost:3000",
@@ -40,6 +50,7 @@ apiRouter.use('/', authRoutes);
 apiRouter.use('/users', requireAuth, usersRouter);
 apiRouter.use('/files', requireAuth, filesRouter)
 apiRouter.use('/folders', requireAuth, folderRouter);
+apiRouter.use('/trash', requireAuth, trashRouter);
 
 app.use('/api', apiRouter);
 
