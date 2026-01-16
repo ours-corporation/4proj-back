@@ -2,6 +2,7 @@ import { Table, Column, Model, DataType, HasMany, BelongsTo, ForeignKey, Primary
 import { Quota } from './quota';
 import { Folder } from './folder';
 import { File } from './file';
+import { Share } from './share';
 
 @Scopes(() => ({
     minimal: {
@@ -88,6 +89,14 @@ export class User extends Model {
     @HasMany(() => File)
     files!: File[];
     
+    // Shares crées
+    @HasMany(() => Share, 'owner_id')
+    ownedShares!: Share[];
+
+    // Shares partagés
+    @HasMany(() => Share, 'recipient_id')
+    receivedShares!: Share[];
+
     @Default(DataType.NOW)
     @Column({ field: 'created_at', type: DataType.DATE })
     createdAt!: Date;

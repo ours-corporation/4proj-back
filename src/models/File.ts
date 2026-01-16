@@ -1,6 +1,7 @@
-import { Table, Column, Model, DataType, ForeignKey, BelongsTo, PrimaryKey, AutoIncrement,Default } from 'sequelize-typescript';
+import { Table, Column, Model, DataType, ForeignKey, BelongsTo, PrimaryKey, AutoIncrement,Default, HasMany } from 'sequelize-typescript';
 import { User } from './user';
 import { Folder } from './folder';
+import { Share } from './share';
 
 @Table({
     tableName: 'files',
@@ -38,6 +39,9 @@ export class File extends Model {
 
     @BelongsTo(() => Folder)
     folder!: Folder | null;
+
+    @HasMany(() => Share)
+    shares!: Share[];
 
     @Column({ type: DataType.DATE, allowNull: true, defaultValue: null })
     trashed_at!: Date | null;
