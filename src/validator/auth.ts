@@ -1,4 +1,13 @@
+import { Request, Response } from 'express';
+import User from '../models/user';
 import { z } from 'zod';
+
+interface RegisterBody {
+    username?: string;
+    email?: string;
+    password?: string;
+}
+
 
 export const loginValidatorSchema = z.object({
     body: z.object({

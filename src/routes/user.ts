@@ -61,9 +61,7 @@ const usersRouter = Router();
  *       404:
  *         description: Utilisateur introuvable
  */
-usersRouter.get('/me', async (req: Request, res: Response) => {
-    return getMe(req, res);
-});
+usersRouter.get('/me', async (req: Request, res: Response) => {return getMe(req, res);});
 
 /**
  * @swagger
@@ -121,9 +119,7 @@ usersRouter.get('/me', async (req: Request, res: Response) => {
  *                   type: string
  *                   example: "Erreur serveur"
  */
-usersRouter.put('/me', async (req: Request, res: Response) => {
-    return updateMe(req, res);
-});
+usersRouter.put('/me', async (req: Request, res: Response) => {return updateMe(req, res);});
 
 /**
  * @swagger
@@ -159,9 +155,7 @@ usersRouter.put('/me', async (req: Request, res: Response) => {
  *                   type: string
  *                   example: "Erreur serveur"
  */
-usersRouter.delete('/me', async (req: Request, res: Response) => {
-    return deleteMe(req, res);
-});
+usersRouter.delete('/me', async (req: Request, res: Response) => {return deleteMe(req, res);});
 
 /**
  * @swagger
@@ -226,9 +220,7 @@ usersRouter.delete('/me', async (req: Request, res: Response) => {
  *                   type: string
  *                   example: "Erreur serveur"
  */
-usersRouter.put('/me/update-password', validate(updateUserValidatorSchema), async (req: Request, res: Response) => {
-    return updatePassword(req, res);
-});
+usersRouter.put('/me/update-password', validate(updateUserValidatorSchema), async (req: Request, res: Response) => {return updatePassword(req, res);});
 
 /**
  * @swagger
@@ -288,8 +280,6 @@ usersRouter.put('/me/update-password', validate(updateUserValidatorSchema), asyn
  *       404:
  *         description: Utilisateur introuvable
  */
-usersRouter.get('/:id', async (req: Request, res: Response) => {
-    return getUserById(req, res);
-});
+usersRouter.get('/:id', async (req: Request, res: Response) => {return getUserById(req, res);});
 
 export default usersRouter;

@@ -1,5 +1,5 @@
 import {Request, Response} from 'express';
-import User from '../models/User';
+import { User } from '../models';
 import {compareString, hashString} from '../services/hash';
 
 export const getMe = async (req: Request, res: Response) => {
@@ -102,7 +102,14 @@ export const updatePassword = async (req: Request, res: Response) => {
             return res.status(404).json({ message: 'Utilisateur introuvable' });
         }
 
+        if (!user.password) {
+            return res.status(400).json({ 
+                message: "Cet utilisateur n'a pas de mot de passe défini. Veuillez utiliser la procédure de réinitialisation." 
+            });
+        }
+
         const ok = await compareString(lastPassword, user.password);
+
         if (!ok) return res.status(400).json({ message: 'Ancien mot de passe incorrect' });
 
         user.password = await hashString(NewPassword);

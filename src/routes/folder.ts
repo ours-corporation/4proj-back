@@ -3,6 +3,8 @@ import { createFolder, getFolder } from '../controllers/folder';
 import { requireAuth } from '../middleware/auth';
 import { validate } from '../middleware/validate';
 import { createFolderSchema, getFolderSchema } from '../validator/folder';
+import { moveToTrash, restoreFromTrash, deletePermanently } from '../controllers/trash';
+import { trashIdSchema } from '../validator/trash';
 
 const folderRouter = Router();
 
@@ -33,12 +35,10 @@ const folderRouter = Router();
  *             properties:
  *               name:
  *                 type: string
- *                 description: Nom du dossier
  *                 example: "Vacances 2024"
  *               parent_id:
  *                 type: integer
  *                 nullable: true
- *                 description: ID du dossier parent (null pour la racine)
  *                 example: 12
  *     responses:
  *       201:
@@ -46,24 +46,13 @@ const folderRouter = Router();
  *         content:
  *           application/json:
  *             schema:
- *               type: object
- *               properties:
- *                 id:
- *                   type: integer
- *                 name:
- *                   type: string
- *                 user_id:
- *                   type: integer
- *                 parent_id:
- *                   type: integer
+ *               $ref: '#/components/schemas/Folder'
  *       400:
- *         description: "Données invalides (ex: nom vide)"
+ *         description: Données invalides
  *       404:
  *         description: Dossier parent introuvable
- *       403:
- *         description: Accès interdit au dossier parent
  */
-folderRouter.post( '/', requireAuth, validate(createFolderSchema), createFolder);
+folderRouter.post('/',requireAuth,validate(createFolderSchema),createFolder);
 
 /**
  * @swagger
@@ -72,9 +61,6 @@ folderRouter.post( '/', requireAuth, validate(createFolderSchema), createFolder)
  *     tags:
  *       - Folders
  *     summary: Récupérer le contenu de la racine (Root)
- *     description: >
- *       Renvoie les fichiers et dossiers situés à la racine,
- *       ainsi que le fil d'ariane.
  *     security:
  *       - bearerAuth: []
  *     responses:
@@ -96,29 +82,16 @@ folderRouter.post( '/', requireAuth, validate(createFolderSchema), createFolder)
  *                     properties:
  *                       id:
  *                         type: integer
- *                         nullable: true
  *                       name:
  *                         type: string
  *                 folders:
  *                   type: array
  *                   items:
- *                     type: object
- *                     properties:
- *                       id:
- *                         type: integer
- *                       name:
- *                         type: string
+ *                     $ref: '#/components/schemas/Folder'
  *                 files:
  *                   type: array
  *                   items:
- *                     type: object
- *                     properties:
- *                       id:
- *                         type: integer
- *                       name:
- *                         type: string
- *                       size_bytes:
- *                         type: integer
+ *                     $ref: '#/components/schemas/File'
  */
 folderRouter.get('/', requireAuth, getFolder);
 
@@ -137,7 +110,6 @@ folderRouter.get('/', requireAuth, getFolder);
  *         required: true
  *         schema:
  *           type: integer
- *         description: ID du dossier à consulter
  *     responses:
  *       200:
  *         description: Contenu du dossier récupéré
@@ -147,13 +119,7 @@ folderRouter.get('/', requireAuth, getFolder);
  *               type: object
  *               properties:
  *                 current:
- *                   type: object
- *                   description: Infos du dossier actuel
- *                   properties:
- *                     id:
- *                       type: integer
- *                     name:
- *                       type: string
+ *                   $ref: '#/components/schemas/Folder'
  *                 breadcrumbs:
  *                   type: array
  *                   items:
@@ -161,38 +127,106 @@ folderRouter.get('/', requireAuth, getFolder);
  *                     properties:
  *                       id:
  *                         type: integer
- *                         nullable: true
  *                       name:
  *                         type: string
  *                 folders:
  *                   type: array
  *                   items:
- *                     type: object
- *                     properties:
- *                       id:
- *                         type: integer
- *                       name:
- *                         type: string
+ *                     $ref: '#/components/schemas/Folder'
  *                 files:
  *                   type: array
  *                   items:
- *                     type: object
- *                     properties:
- *                       id:
- *                         type: integer
- *                       name:
- *                         type: string
- *                       mime_type:
- *                         type: string
- *                       size_bytes:
- *                         type: integer
- *       400:
- *         description: ID invalide
+ *                     $ref: '#/components/schemas/File'
  *       404:
  *         description: Dossier introuvable
- *       403:
- *         description: Accès interdit
  */
-folderRouter.get('/:id', requireAuth, validate(getFolderSchema), getFolder);
+folderRouter.get('/:id',requireAuth,validate(getFolderSchema),getFolder);
+
+/**
+ * @swagger
+ * /folders/{id}/trash:
+ *   put:
+ *     tags:
+ *       - Folders
+ *     summary: Mettre un dossier à la corbeille (Soft Delete récursif)
+ *     description: |
+ *       Déplace le dossier et **tout son contenu** vers la corbeille.
+ *
+ *       - Applique un ID de suppression unique (Batch ID) à tous les enfants.
+ *       - Préserve l'historique des fichiers déjà supprimés à l'intérieur.
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: ID du dossier à supprimer
+ *     responses:
+ *       200:
+ *         description: Dossier déplacé vers la corbeille.
+ *       404:
+ *         description: Dossier introuvable.
+ */
+folderRouter.put('/:id/trash',requireAuth,validate(trashIdSchema),moveToTrash);
+
+/**
+ * @swagger
+ * /folders/{id}/restore:
+ *   put:
+ *     tags:
+ *       - Folders
+ *     summary: Restaurer un dossier
+ *     description: |
+ *       Restaure le dossier et tout son contenu
+ *       (fichiers et sous-dossiers).
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: ID du dossier à restaurer
+ *     responses:
+ *       200:
+ *         description: Dossier restauré.
+ *       404:
+ *         description: Dossier introuvable.
+ */
+folderRouter.put('/:id/restore',requireAuth,validate(trashIdSchema),restoreFromTrash);
+
+/**
+ * @swagger
+ * /folders/{id}:
+ *   delete:
+ *     tags:
+ *       - Folders
+ *     summary: Supprimer un dossier DÉFINITIVEMENT (Hard Delete récursif)
+ *     description: |
+ *       **ATTENTION : Irréversible.**
+ *
+ *       - Supprime le dossier, ses sous-dossiers
+ *         et **tous les fichiers** qu'il contient.
+ *       - Libère tout l'espace de stockage associé.
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: ID du dossier à supprimer définitivement
+ *     responses:
+ *       200:
+ *         description: Dossier et contenu supprimés définitivement.
+ *       404:
+ *         description: Dossier introuvable.
+ */
+folderRouter.delete('/:id',requireAuth,validate(trashIdSchema),deletePermanently);
+
 
 export default folderRouter;
