@@ -8,13 +8,11 @@ class SearchService {
         const { q, trash, type, category, minSize, maxSize, after, before } = filters;
         const searchTerm = `%${q}%`;
 
-        // 1. Gestion de la Corbeille vs Normal
-        // Si trash=true, on cherche CE QUI EST supprimé. Sinon, CE QUI N'EST PAS supprimé.
+        // Si trash=true, on cherche CE QUI EST supprimé.
         const trashFilter = trash 
             ? { [Op.not]: null } 
             : null;
 
-        // 2. Filtres communs (Date et Nom)
         const commonWhere: WhereOptions = {
             user_id: userId,
             name: { [Op.iLike]: searchTerm },
@@ -31,9 +29,6 @@ class SearchService {
         let files: File[] = [];
         let folders: Folder[] = [];
 
-        // ==================================================
-        // RECHERCHE FICHIERS (Avec filtres spécifiques)
-        // ==================================================
         if (type === 'all' || type === 'file') {
             const fileWhere: WhereOptions = { ...commonWhere };
 
@@ -75,10 +70,6 @@ class SearchService {
             });
         }
 
-        // ==================================================
-        // RECHERCHE DOSSIERS (Pas de taille ni mimeType)
-        // ==================================================
-        // Si on cherche une catégorie spécifique (ex: Image), on n'affiche pas les dossiers
         if ((type === 'all' || type === 'folder') && !category && !minSize && !maxSize) {
             folders = await Folder.findAll({
                 where: commonWhere,
