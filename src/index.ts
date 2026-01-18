@@ -13,6 +13,7 @@ import folderRouter from './routes/folder';
 import trashRouter from './routes/trash';
 import shareRouter from './routes/share';
 import publicRouter from './routes/public';
+import searchRouter from './routes/search';
 
 dotenv.config();
 
@@ -55,6 +56,7 @@ apiRouter.use('/folders', requireAuth, folderRouter);
 apiRouter.use('/trash', requireAuth, trashRouter);
 apiRouter.use('/shares', requireAuth, shareRouter);
 apiRouter.use('/public', publicRouter);
+apiRouter.use('/search', requireAuth, searchRouter);
 
 // ...
 

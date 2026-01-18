@@ -8,3 +8,21 @@ export const fileIdSchema = z.object({
              .regex(/^\d+$/, "L'ID du fichier doit être un nombre valide")
     })
 });
+
+export const recentFileSchema = z.object({
+    query: z.object({
+        // On accepte un nombre, avec une valeur par défaut de 10
+        limit: z.coerce.number().min(1).max(50).default(6)
+    })
+});
+
+// Validation pour la modification
+export const updateFileSchema = z.object({
+    params: z.object({
+        id: z.coerce.number()
+    }),
+    body: z.object({
+        name: z.string().min(1, "Le nom ne peut pas être vide").optional(),
+        // On pourra ajouter d'autres champs ici plus tard (ex: folder_id pour déplacer)
+    })
+});
