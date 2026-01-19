@@ -28,7 +28,9 @@ const options: swaggerJsdoc.Options = {
                     type: 'object',
                     properties: {
                         id: { type: 'integer', example: 1 },
-                        name: { type: 'string', example: 'mon_cv.pdf' },
+                        name: { type: 'string', example: "vacances", description: "Nom du fichier SANS l'extension" },
+                        extension: { type: 'string', nullable: true, example: "jpg", description: "Extension du fichier (sans le point)" },
+                        fullName: { type: 'string', example: "vacances.jpg", description: "Champ virtuel : Nom complet (name + extension)" },
                         size_bytes: { type: 'integer', format: 'int64', example: 102400 },
                         mime_type: { type: 'string', example: 'application/pdf' },
                         physical_key: { type: 'string', example: 'uuid-physique-sur-disque' },

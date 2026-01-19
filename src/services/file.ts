@@ -15,10 +15,9 @@ class FileService {
         const user = await User.findByPk(userId, { include: [Quota] });
         if (!user) throw new Error("Utilisateur introuvable");
 
-        // Vérification du quota
         const currentUsage = BigInt(user.used_bytes);
         const fileSize = BigInt(file.size);
-        const quotaLimit = user.quota_id ? BigInt(32212254720) : BigInt(0);
+        const quotaLimit = user.quota_id ? BigInt(32212254720) : BigInt(0); // 30GB
         
         if ((currentUsage + fileSize) > quotaLimit) {
             throw new Error("Quota de stockage dépassé (30 Go max).");
@@ -34,16 +33,23 @@ class FileService {
         try {
             await fs.writeFile(physicalPath, file.buffer);
 
+            // Découpage du nom et de l'extension
+            const extWithDot = path.extname(file.originalname);
+            const extension = extWithDot ? extWithDot.substring(1) : null; 
+            const name = path.basename(file.originalname, extWithDot); 
+            // ---------------------------------------------
+
             const newFile = await File.create({
                 user_id: userId,
-                folder_id: parentId, // Peut être null si à la racine
-                name: file.originalname,
-                physical_key: physicalKey, // Le lien vers le fichier sur le disque
+                folder_id: parentId,
+                name: name,
+                extension: extension,
+                physical_key: physicalKey,
                 size_bytes: fileSize,
                 mime_type: file.mimetype
             });
 
-            // Mise à jour de l'espace utilisé par l'utilisateur
+            // Mise à jour quota
             user.used_bytes = Number(currentUsage + fileSize); 
             await user.save();
 
@@ -106,11 +112,17 @@ class FileService {
     async updateFile(fileId: number, userId: number, updates: { name?: string }) {
         const file = await File.findOne({ where: { id: fileId, user_id: userId } });
     
-        if (!file) {
-            throw new Error("Fichier introuvable ou accès refusé.");
-        }
+        if (!file) throw new Error("Fichier introuvable.");
 
-        await file.update(updates);
+        // Si on demande un changement de nom
+        if (updates.name) {
+            const ext = path.extname(updates.name);
+            if (ext) {
+                updates.name = path.basename(updates.name, ext);
+            }
+            // On met à jour SEULEMENT le champ name. L'extension en base ne bouge pas.
+            await file.update({ name: updates.name });
+        }
         return file;
     }
 }

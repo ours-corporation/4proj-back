@@ -14,8 +14,14 @@ export class File extends Model {
     @Column(DataType.INTEGER)
     id!: number;
 
-    @Column({ type: DataType.STRING, allowNull: false })
+    @Column({type: DataType.STRING,allowNull: false})
     name!: string;
+
+    @Column({type: DataType.STRING,allowNull: true})
+    extension!: string | null;
+
+    @Column(DataType.VIRTUAL)
+    get fullName(): string {return this.extension ? `${this.name}.${this.extension}` : this.name;}
 
     @Column({ type: DataType.BIGINT, allowNull: false })
     size_bytes!: number;

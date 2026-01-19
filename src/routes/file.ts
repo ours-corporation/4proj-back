@@ -223,7 +223,7 @@ filesRouter.delete('/:id',requireAuth,validate(trashIdSchema),deletePermanently)
  *             properties:
  *               name:
  *                 type: string
- *                 example: "Nouveau nom.pdf"
+ *                 example: "Nouveau nom"
  *     responses:
  *       200:
  *         description: Fichier mis à jour
