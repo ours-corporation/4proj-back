@@ -101,42 +101,27 @@ folderRouter.get('/', requireAuth, getFolder);
  *   get:
  *     tags:
  *       - Folders
- *     summary: Récupérer le contenu d'un dossier spécifique
+ *     summary: Récupérer le contenu d'un dossier
+ *     description: Renvoie les sous-dossiers, fichiers, fil d'ariane et permissions.
  *     security:
  *       - bearerAuth: []
  *     parameters:
  *       - in: path
  *         name: id
- *         required: true
+ *         required: false
+ *         description: ID du dossier (ou null ou absent pour la racine)
  *         schema:
  *           type: integer
+ *           nullable: true
  *     responses:
  *       200:
- *         description: Contenu du dossier récupéré
+ *         description: Contenu du dossier
  *         content:
  *           application/json:
  *             schema:
- *               type: object
- *               properties:
- *                 current:
- *                   $ref: '#/components/schemas/Folder'
- *                 breadcrumbs:
- *                   type: array
- *                   items:
- *                     type: object
- *                     properties:
- *                       id:
- *                         type: integer
- *                       name:
- *                         type: string
- *                 folders:
- *                   type: array
- *                   items:
- *                     $ref: '#/components/schemas/Folder'
- *                 files:
- *                   type: array
- *                   items:
- *                     $ref: '#/components/schemas/File'
+ *               $ref: '#/components/schemas/FolderContentResponse'
+ *       403:
+ *         description: Accès refusé (ni propriétaire, ni partagé)
  *       404:
  *         description: Dossier introuvable
  */

@@ -118,14 +118,49 @@ class ShareService {
     }
 
     async getSharedWithMe(userId: number) {
-        return await Share.findAll({
+        const shares = await Share.findAll({
             where: { recipient_id: userId },
             include: [
                 { model: File },
                 { model: Folder },
-                { model: User, as: 'owner', attributes: ['username', 'email'] }
+                { 
+                    model: User, 
+                    as: 'owner', 
+                    attributes: ['id', 'username', 'email'] // On veut savoir qui partage
+                }
             ]
         });
+
+        const files: any[] = [];
+        const folders: any[] = [];
+
+        for (const share of shares) {
+            
+            if (share.file) {
+                files.push({
+                    ...share.file.toJSON(), 
+                    permission: share.permission,
+                    share_id: share.id, 
+                    owner: share.owner
+                });
+            } 
+            
+            else if (share.folder) {
+                folders.push({
+                    // On étale les propriétés du dossier
+                    ...share.folder.toJSON(),
+                    permission: share.permission,
+                    share_id: share.id,
+                    owner: share.owner
+                });
+            }
+        }
+
+        // On n'a pas de breadcrumbs ou current ici car on est à la racine virtuelle "Partagés avec moi"
+        return {
+            files,
+            folders
+        };
     }
 
     async revokeShare(ownerId: number, shareId: number) {

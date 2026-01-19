@@ -55,6 +55,52 @@ const options: swaggerJsdoc.Options = {
                         updatedAt: { type: 'string', format: 'date-time' },
                     },
                 },
+
+                FolderWithPermission: {
+                    allOf: [
+                        { $ref: '#/components/schemas/Folder' }, // Hérite de toutes les props du Dossier
+                        {
+                            type: 'object',
+                            properties: {
+                                permission: { 
+                                    type: 'string', 
+                                    enum: ['READ', 'WRITE', 'OWNER'],
+                                    description: "Niveau d'accès de l'utilisateur sur ce dossier"
+                                }
+                            }
+                        }
+                    ]
+                },
+
+                // 2. La réponse complète de GET /folders/{id}
+                FolderContentResponse: {
+                    type: 'object',
+                    properties: {
+                        current: {
+                            $ref: '#/components/schemas/FolderWithPermission',
+                            nullable: true,
+                            description: "Le dossier actuel (null si racine)"
+                        },
+                        breadcrumbs: {
+                            type: 'array',
+                            items: {
+                                type: 'object',
+                                properties: {
+                                    id: { type: 'integer', nullable: true },
+                                    name: { type: 'string' }
+                                }
+                            }
+                        },
+                        folders: {
+                            type: 'array',
+                            items: { $ref: '#/components/schemas/Folder' }
+                        },
+                        files: {
+                            type: 'array',
+                            items: { $ref: '#/components/schemas/File' } // Utilise ton nouveau schéma File (avec fullName)
+                        }
+                    }
+                },
                 Share: {
                     type: 'object',
                     properties: {
@@ -68,6 +114,53 @@ const options: swaggerJsdoc.Options = {
                         permission: { type: 'string', enum: ['READ', 'WRITE'], example: 'READ' },
                         createdAt: { type: 'string', format: 'date-time' },
                         updatedAt: { type: 'string', format: 'date-time' }
+                    }
+                },
+                ShareOwner: {
+                    type: 'object',
+                    properties: {
+                        id: { type: 'integer' },
+                        username: { type: 'string' },
+                        email: { type: 'string' }
+                    }
+                },
+                SharedFile: {
+                    allOf: [
+                        { $ref: '#/components/schemas/File' }, // Hérite de toutes les props de File
+                        {
+                           type: 'object',
+                         properties: {
+                                share_id: { type: 'integer', description: "ID du lien de partage" },
+                                permission: { type: 'string', enum: ['READ', 'WRITE'] },
+                                owner: { $ref: '#/components/schemas/ShareOwner' }
+                            }
+                        }
+                    ]
+                },
+                SharedFolder: {
+                    allOf: [
+                        { $ref: '#/components/schemas/Folder' }, // Hérite de toutes les props de Folder
+                        {
+                            type: 'object',
+                            properties: {
+                                share_id: { type: 'integer' },
+                                permission: { type: 'string', enum: ['READ', 'WRITE'] },
+                                owner: { $ref: '#/components/schemas/ShareOwner' }
+                            }
+                        }
+                    ]
+                },
+                SharedContentList: {
+                    type: 'object',
+                    properties: {
+                        folders: {
+                            type: 'array',
+                            items: { $ref: '#/components/schemas/SharedFolder' }
+                        },
+                        files: {
+                            type: 'array',
+                            items: { $ref: '#/components/schemas/SharedFile' }
+                        }
                     }
                 },
                 SharePublicInput: {

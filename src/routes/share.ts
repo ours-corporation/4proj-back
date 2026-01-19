@@ -89,7 +89,7 @@ shareRouter.post('/private',requireAuth,validate(createPrivateShareSchema),creat
  *             schema:
  *               type: array
  *               items:
- *                 $ref: '#/components/schemas/Share'
+ *                 $ref: '#/components/schemas/SharedContentList'
  */
 shareRouter.get('/received',requireAuth,getReceivedShares);
 
