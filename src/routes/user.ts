@@ -72,7 +72,7 @@ usersRouter.get('/me', async (req: Request, res: Response) => {return getMe(req,
  *     tags:
  *       - Users
  *     summary: Met à jour les informations de l'utilisateur connecté
- *     description: Permet à l'utilisateur connecté de mettre à jour son email.
+ *     description: Permet à l'utilisateur connecté de mettre à jour son email et/ou son nom d'utilisateur.
  *     requestBody:
  *       required: true
  *       content:
@@ -82,10 +82,16 @@ usersRouter.get('/me', async (req: Request, res: Response) => {return getMe(req,
  *             properties:
  *               email:
  *                 type: string
+ *                 format: email
  *                 description: Nouvel email de l'utilisateur
+ *                 example: user@example.com
+ *               username:
+ *                 type: string
+ *                 description: Nouveau nom d'utilisateur
+ *                 example: john_doe
  *     responses:
  *       200:
- *         description: Utilisateur mis à jour
+ *         description: Utilisateur mis à jour avec succès
  *         content:
  *           application/json:
  *             schema:
@@ -96,8 +102,13 @@ usersRouter.get('/me', async (req: Request, res: Response) => {return getMe(req,
  *                   properties:
  *                     id:
  *                       type: integer
+ *                       example: 1
  *                     email:
  *                       type: string
+ *                       example: user@example.com
+ *                     username:
+ *                       type: string
+ *                       example: john_doe
  *       404:
  *         description: Utilisateur introuvable
  *         content:
@@ -107,7 +118,7 @@ usersRouter.get('/me', async (req: Request, res: Response) => {return getMe(req,
  *               properties:
  *                 message:
  *                   type: string
- *                   example: "Utilisateur introuvable"
+ *                   example: Utilisateur introuvable
  *       500:
  *         description: Erreur serveur
  *         content:
@@ -117,7 +128,7 @@ usersRouter.get('/me', async (req: Request, res: Response) => {return getMe(req,
  *               properties:
  *                 message:
  *                   type: string
- *                   example: "Erreur serveur"
+ *                   example: Erreur serveur
  */
 usersRouter.put('/me', async (req: Request, res: Response) => {return updateMe(req, res);});
 
