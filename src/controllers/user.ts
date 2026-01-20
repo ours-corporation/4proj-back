@@ -16,7 +16,6 @@ export const getMe = async (req: Request, res: Response) => {
         if (includeQuota) {
             await user.reload({ include: ['quota'] });
         }
-        console.log(user);
         return res.json(user);
     } catch (error) {
         console.error(error);

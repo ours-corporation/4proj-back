@@ -35,6 +35,9 @@ const usersRouter = Router();
  *                     id:
  *                       type: integer
  *                       example: 1
+ *                     username:
+ *                        type: string
+ *                        example: johndoe
  *                     email:
  *                       type: string
  *                       example: user@example.com
