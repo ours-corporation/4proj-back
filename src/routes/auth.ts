@@ -5,6 +5,7 @@ import {loginValidatorSchema, registerValidatorSchema} from "../validator/auth";
 
 const authRouter = Router();
 
+
 /**
  * @swagger
  * tags:
@@ -191,6 +192,77 @@ authRouter.post('/logout', async (req: Request, res: Response) => {
     return logout(req, res);
 });
 
+/**
+ * @swagger
+ * /auth/google:
+ *   post:
+ *     tags:
+ *       - Auth
+ *     summary: Authentification via Google (Connexion / Inscription)
+ *     description: >
+ *       Échange un code d'autorisation Google contre un token.
+ *       Crée l'utilisateur ou le connecte, et place le refresh token
+ *       en cookie HttpOnly.
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - code
+ *             properties:
+ *               code:
+ *                 type: string
+ *                 description: Le code d'autorisation retourné par le client Google OAuth (one-time code).
+ *     responses:
+ *       200:
+ *         description: Authentification réussie.
+ *         headers:
+ *           Set-Cookie:
+ *             schema:
+ *               type: string
+ *             example: refreshToken=abcde12345; Path=/; HttpOnly; Secure; SameSite=Strict
+ *             description: Cookie contenant le refresh token sécurisé.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 accessToken:
+ *                   type: string
+ *                   description: Le token JWT d'accès.
+ *       400:
+ *         description: Requête invalide (Code manquant).
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ *                   example: Authorization code is required
+ *       401:
+ *         description: Échec de l'authentification Google ou compte invalide.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ *                   example: Échec de l’authentification Google
+ *       409:
+ *         description: Conflit - L'email existe déjà sans Google.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ *                   example: Un compte avec cet email existe déjà sans Google.
+ */
 authRouter.post('/auth/google', async (req: Request, res: Response) => {
     return authWithGoogle(req, res);
 });
