@@ -1,7 +1,7 @@
 import { Router, Request, Response } from 'express';
 import { getMe, updateMe, deleteMe, updatePassword, getUserById } from "../controllers/user";
 import { validate } from '../middleware/validate';
-import {updateUserValidatorSchema} from "../validator/user";
+import {updatePasswordValidatorSchema, updateUserValidatorSchema} from "../validator/user";
 
 const usersRouter = Router();
 
@@ -173,25 +173,39 @@ usersRouter.delete('/me', async (req: Request, res: Response) => {return deleteM
 
 /**
  * @swagger
- * /users/update-password:
+ * /users/me/update-password:
  *   put:
  *     tags:
  *       - Users
- *     summary: Met à jour le mot de passe de l'utilisateur connecté
- *     description: Permet à l'utilisateur connecté de changer son mot de passe. Le nouveau mot de passe doit respecter certaines règles de sécurité.
+ *     summary: Mettre à jour le mot de passe
+ *     description: |
+ *       Permet à l'utilisateur authentifié de modifier son mot de passe.
+ *       Le nouveau mot de passe doit respecter les règles de sécurité suivantes :
+ *       - au moins 12 caractères
+ *       - une lettre minuscule
+ *       - une lettre majuscule
+ *       - un chiffre
+ *       - un caractère spécial
+ *     security:
+ *       - bearerAuth: []
  *     requestBody:
  *       required: true
  *       content:
  *         application/json:
  *           schema:
  *             type: object
+ *             required:
+ *               - lastPassword
+ *               - NewPassword
  *             properties:
  *               lastPassword:
  *                 type: string
- *                 description: L'ancien mot de passe de l'utilisateur
+ *                 description: Ancien mot de passe de l'utilisateur
+ *                 example: "AncienMotDePasse123!"
  *               NewPassword:
  *                 type: string
- *                 description: Le nouveau mot de passe respectant les règles de sécurité
+ *                 description: Nouveau mot de passe conforme aux règles de sécurité
+ *                 example: "NouveauMotDePasseFort123!"
  *     responses:
  *       200:
  *         description: Mot de passe mis à jour avec succès
@@ -202,9 +216,9 @@ usersRouter.delete('/me', async (req: Request, res: Response) => {return deleteM
  *               properties:
  *                 message:
  *                   type: string
- *                   example: "Mot de passe mis à jour avec succès"
+ *                   example: Mot de passe mis à jour avec succès
  *       400:
- *         description: Mot de passe invalide ou ancien mot de passe incorrect
+ *         description: Requête invalide
  *         content:
  *           application/json:
  *             schema:
@@ -212,7 +226,13 @@ usersRouter.delete('/me', async (req: Request, res: Response) => {return deleteM
  *               properties:
  *                 message:
  *                   type: string
- *                   example: "Le mot de passe doit contenir au moins 12 caractères"
+ *                   examples:
+ *                     wrongPassword:
+ *                       value: Ancien mot de passe incorrect
+ *                     noPassword:
+ *                       value: Cet utilisateur n'a pas de mot de passe défini. Veuillez utiliser la procédure de réinitialisation.
+ *                     invalidNewPassword:
+ *                       value: Le mot de passe doit contenir au moins 12 caractères
  *       404:
  *         description: Utilisateur introuvable
  *         content:
@@ -222,7 +242,7 @@ usersRouter.delete('/me', async (req: Request, res: Response) => {return deleteM
  *               properties:
  *                 message:
  *                   type: string
- *                   example: "Utilisateur introuvable"
+ *                   example: Utilisateur introuvable
  *       500:
  *         description: Erreur serveur
  *         content:
@@ -232,9 +252,9 @@ usersRouter.delete('/me', async (req: Request, res: Response) => {return deleteM
  *               properties:
  *                 message:
  *                   type: string
- *                   example: "Erreur serveur"
+ *                   example: Erreur serveur
  */
-usersRouter.put('/me/update-password', validate(updateUserValidatorSchema), async (req: Request, res: Response) => {return updatePassword(req, res);});
+usersRouter.put('/me/update-password', validate(updatePasswordValidatorSchema), async (req: Request, res: Response) => {return updatePassword(req, res);});
 
 /**
  * @swagger
