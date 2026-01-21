@@ -2,12 +2,11 @@ import { z } from 'zod';
 
 export const updateUserValidatorSchema = z.object({
     body: z.object({
-        username: z.string({ message: "Username is required" })
-                 .min(3, "Username must be at least 3 characters")
-                 .max(30, "Username cannot exceed 30 characters")
-                 .regex(/^[a-zA-Z0-9_-]+$/, "Username can only contain letters, numbers, underscores (_) and hyphens (-)")
-                 .optional(),
-        email: z.string({ message: "Email is required" })
-                 .email("Invalid email format"),
+        lastPassword: z.string().min(1, { message: "L'ancien mot de passe est requis" }),
+        NewPassword: z.string().min(12, { message: 'Le mot de passe doit contenir au moins 12 caractères' })
+            .regex(/[a-z]/, { message: 'Le mot de passe doit contenir au moins une lettre minuscule' })
+            .regex(/[A-Z]/, { message: 'Le mot de passe doit contenir au moins une lettre majuscule' })
+            .regex(/[0-9]/, { message: 'Le mot de passe doit contenir au moins un chiffre' })
+            .regex(/[^a-zA-Z0-9]/, { message: 'Le mot de passe doit contenir au moins un caractère spécial' }),
     })
 });
