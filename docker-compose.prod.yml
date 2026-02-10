@@ -1,0 +1,54 @@
+services:
+  4proj-back:
+    build:
+      context: .
+      dockerfile: Dockerfile.prod
+    image: 4proj-back:latest
+    env_file:
+      - .env
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      DB_HOST: ${DB_HOST:-4proj-db}
+      DB_USER: ${DB_USER:-postgres}
+      DB_PASSWORD: ${DB_PASSWORD:-password}
+      DB_NAME: ${DB_NAME:-mydatabase}
+      DB_PORT: ${DB_PORT:-5432}
+    depends_on:
+      - 4proj-db
+    restart: unless-stopped
+    volumes:
+      - user_uploads:/app/uploads
+    networks:
+      - 4proj-backend-network
+      - 4proj-network
+
+  4proj-db:
+    image: postgres:16
+    env_file:
+      - .env
+    environment:
+      POSTGRES_USER: ${DB_USER:-postgres}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-password}
+      POSTGRES_DB: ${DB_NAME:-mydatabase}
+    volumes:
+      - pgdata:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    restart: unless-stopped
+    networks:
+      - 4proj-backend-network
+
+networks:
+  4proj-network:
+    external: true
+  4proj-backend-network:
+    driver: bridge
+
+volumes:
+  pgdata:
+  user_uploads:

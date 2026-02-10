@@ -1,0 +1,58 @@
+name: Déploiement Production
+
+on:
+  push:
+    branches:
+      - test-runner
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: self-hosted
+    concurrency:
+      group: deploy-prod
+      cancel-in-progress: true
+
+    steps:
+      - name: Checkout du code
+        uses: actions/checkout@v4
+
+      - name: Synchroniser les fichiers vers /opt/4proj-backend
+        run: |
+          # On utilise -rlpDv pour éviter les erreurs de modification de date/groupe sur le dossier parent
+          # --delete permet de supprimer sur le serveur les fichiers supprimés sur Git
+          rsync -rv --filter='protect .env' --delete \
+            --exclude='.git/' --exclude='.github/' \
+            ./ /opt/4proj-backend/
+
+      - name: Créer le fichier .env à partir des secrets
+        working-directory: /opt/4proj-backend
+        run: |
+          echo "${{ secrets.PROD_ENV_FILE }}" > .env
+
+      - name: Déployer avec Docker Compose
+        working-directory: /opt/4proj-backend
+        run: |
+          # Utiliser le fichier de compose pour la production
+          docker compose -f docker-compose.prod.yml pull || true
+          # arrêter et recréer pour s'assurer d'appliquer les changements (garde les volumes)
+          docker compose -f docker-compose.prod.yml down || true
+          docker compose -f docker-compose.prod.yml up -d --build
+
+      - name: Nettoyage images temporaires
+        run: docker image prune -f || true
+
+      - name: Attendre la base de données
+        working-directory: /opt/4proj-backend
+        run: |
+            # Attendre que la base de données soit prête avant de lancer les migrations
+            until docker compose -f docker-compose.prod.yml exec -T 4proj-db pg_isready -U "$DB_USER" -d "$DB_NAME"; do
+                echo "Attente de la base de données..."
+                sleep 5
+            done
+
+      - name: Application des migrations
+        working-directory: /opt/4proj-backend
+        run: |
+          docker compose -f docker-compose.prod.yml exec -T -e NODE_ENV=production 4proj-back npx sequelize-cli db:migrate --config config/sequelize.config.js
+          docker compose -f docker-compose.prod.yml exec -T -e NODE_ENV=production 4proj-back npx sequelize-cli db:seed:all --config config/sequelize.config.js
