@@ -18,12 +18,10 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Créer le fichier .env à partir des secrets
-        working-directory: /opt/4proj-backend
         run: |
           echo "${{ secrets.PROD_ENV_FILE }}" > .env
 
       - name: Déployer avec Docker Compose
-        working-directory: /opt/4proj-backend
         run: |
           # Utiliser le fichier de compose pour la production
           docker compose -f docker-compose.prod.yml pull || true
@@ -35,7 +33,6 @@ jobs:
         run: docker image prune -f || true
 
       - name: Attendre la base de données
-        working-directory: /opt/4proj-backend
         run: |
             # Attendre que la base de données soit prête avant de lancer les migrations
             until docker compose -f docker-compose.prod.yml exec -T 4proj-db pg_isready -U "$DB_USER" -d "$DB_NAME"; do
@@ -44,7 +41,6 @@ jobs:
             done
 
       - name: Application des migrations
-        working-directory: /opt/4proj-backend
         run: |
           docker compose -f docker-compose.prod.yml exec -T -e NODE_ENV=production 4proj-back npx sequelize-cli db:migrate --config config/sequelize.config.js
           docker compose -f docker-compose.prod.yml exec -T -e NODE_ENV=production 4proj-back npx sequelize-cli db:seed:all --config config/sequelize.config.js
