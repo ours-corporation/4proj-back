@@ -17,14 +17,6 @@ jobs:
       - name: Checkout du code
         uses: actions/checkout@v4
 
-      - name: Synchroniser les fichiers vers /opt/4proj-backend
-        run: |
-          # On utilise -rlpDv pour éviter les erreurs de modification de date/groupe sur le dossier parent
-          # --delete permet de supprimer sur le serveur les fichiers supprimés sur Git
-          rsync -rv --filter='protect .env' --delete \
-            --exclude='.git/' --exclude='.github/' \
-            ./ /opt/4proj-backend/
-
       - name: Créer le fichier .env à partir des secrets
         working-directory: /opt/4proj-backend
         run: |
