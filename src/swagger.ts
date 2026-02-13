@@ -72,7 +72,6 @@ const options: swaggerJsdoc.Options = {
                     ]
                 },
 
-                // 2. La réponse complète de GET /folders/{id}
                 FolderContentResponse: {
                     type: 'object',
                     properties: {
@@ -86,7 +85,13 @@ const options: swaggerJsdoc.Options = {
                             items: {
                                 type: 'object',
                                 properties: {
-                                    id: { type: 'integer', nullable: true },
+                                    id: { 
+                                    oneOf: [
+                                        { type: 'integer' },
+                                        { type: 'string' }
+                                        ],
+                                        nullable: true 
+                                    },
                                     name: { type: 'string' }
                                 }
                             }
