@@ -5,6 +5,7 @@ import { validate } from '../middleware/validate';
 import { createFolderSchema, getFolderSchema } from '../validator/folder';
 import { moveToTrash, restoreFromTrash, deletePermanently } from '../controllers/trash';
 import { trashIdSchema } from '../validator/trash';
+import { downloadFolder } from '../controllers/folder';
 
 const folderRouter = Router();
 
@@ -213,5 +214,37 @@ folderRouter.put('/:id/restore',requireAuth,validate(trashIdSchema),restoreFromT
  */
 folderRouter.delete('/:id',requireAuth,validate(trashIdSchema),deletePermanently);
 
+/**
+ * @swagger
+ * /folders/{id}/download:
+ *   get:
+ *     tags:
+ *       - Folders
+ *     summary: Télécharger un dossier entier (ZIP)
+ *     description: |
+ *       Génère une archive ZIP à la volée. 
+ *       Accessible si on est propriétaire OU si on a reçu un accès (via lien privé ou héritage).
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     responses:
+ *       200:
+ *         description: Fichier ZIP généré (Flux / Stream)
+ *         content:
+ *           application/zip:
+ *             schema:
+ *               type: string
+ *               format: binary
+ *       400:
+ *         description: Dossier vide
+ *       403:
+ *         description: Accès refusé
+ */
+folderRouter.get('/:id/download', validate(getFolderSchema), requireAuth, downloadFolder);
 
 export default folderRouter;

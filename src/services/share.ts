@@ -158,7 +158,6 @@ class ShareService {
         let currentFolderId: number | null = folderId;
 
         while (currentFolderId !== null) {
-            // 1. Partage direct ?
             const share = await Share.findOne({
                 where: {
                     recipient_id: userId,
@@ -170,8 +169,6 @@ class ShareService {
                 return share.permission;
             }
 
-            // 2. Remonter au parent
-            // CORRECTION IMPORTANTE ICI : Utiliser 'Folder' (la classe), pas 'fetchedFolder'
             const fetchedFolder: Folder | null = await Folder.findByPk(currentFolderId);
             
             if (!fetchedFolder) return null;
@@ -181,7 +178,7 @@ class ShareService {
 
         return null;
     }
-
+    
     private async verifyOwnership(userId: number, type: 'file' | 'folder', id: number) {
         if (type === 'file') {
             const file = await File.findOne({ where: { id, user_id: userId } });

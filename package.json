@@ -21,6 +21,7 @@
     "test": "vitest"
   },
   "dependencies": {
+    "archiver": "^7.0.1",
     "bcryptjs": "^3.0.3",
     "cookie-parser": "^1.4.7",
     "cors": "^2.8.5",
@@ -38,6 +39,7 @@
     "zod": "^4.3.5"
   },
   "devDependencies": {
+    "@types/archiver": "^7.0.0",
     "@types/cookie-parser": "^1.4.10",
     "@types/cors": "^2.8.19",
     "@types/dotenv": "^6.1.1",
