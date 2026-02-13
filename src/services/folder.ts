@@ -2,6 +2,7 @@ import { Folder, File, Share } from '../models';
 import archiver from 'archiver';
 import path from 'path';
 import { existsSync } from 'fs';
+import ShareService from './share';
 
 const UPLOAD_ROOT = '/app/uploads';
 
@@ -163,7 +164,7 @@ class FolderService {
         if (!folder) throw new Error("Dossier introuvable.");
 
         if (folder.user_id !== userId) {
-            const access = await require('./ShareService').default.hasFolderAccess(userId, folderId);
+            const access = await ShareService.hasFolderAccess(userId, folderId);
             if (!access) throw new Error("Accès interdit pour le téléchargement.");
         }
 
