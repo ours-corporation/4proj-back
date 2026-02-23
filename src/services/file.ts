@@ -1,10 +1,11 @@
-import fs, { unlink } from 'fs/promises'; // asynchrone
-import { existsSync } from 'fs'; // synchrone
+import * as fs from 'fs'; // synchronous helpers
+import { promises as fsPromises } from 'fs'; // async fs.promises
 import path from 'path';      
 import { v4 as uuidv4 } from 'uuid'; 
 import { User, File, Folder, Quota } from '../models';
+import { existsSync } from 'fs';
+import ShareService from './share';
 
-// Le chemin racine défini dans ton docker-compose
 const UPLOAD_ROOT = '/app/uploads';
 
 class FileService {
@@ -26,18 +27,16 @@ class FileService {
         const physicalKey = uuidv4(); 
         const userDir = path.join(UPLOAD_ROOT, userId.toString());
         
-        await fs.mkdir(userDir, { recursive: true });
+        await fsPromises.mkdir(userDir, { recursive: true });
 
         const physicalPath = path.join(userDir, physicalKey);
 
         try {
-            await fs.writeFile(physicalPath, file.buffer);
+            await fsPromises.writeFile(physicalPath, file.buffer);
 
-            // Découpage du nom et de l'extension
             const extWithDot = path.extname(file.originalname);
             const extension = extWithDot ? extWithDot.substring(1) : null; 
-            const name = path.basename(file.originalname, extWithDot); 
-            // ---------------------------------------------
+            const name = path.basename(file.originalname, extWithDot);
 
             const newFile = await File.create({
                 user_id: userId,
@@ -49,7 +48,6 @@ class FileService {
                 mime_type: file.mimetype
             });
 
-            // Mise à jour quota
             user.used_bytes = Number(currentUsage + fileSize); 
             await user.save();
 
@@ -57,12 +55,44 @@ class FileService {
 
         } catch (error) {
             try {
-                await fs.unlink(physicalPath);
+                await fsPromises.unlink(physicalPath);
             } catch (unlinkError) {
                 console.error("Erreur lors du nettoyage du fichier orphelin:", unlinkError);
             }
             throw error;
         }
+    }
+
+    async uploadMultipleFiles(files: Express.Multer.File[], userId: number, folderId: number | null) {
+        if (!files || files.length === 0) {
+            throw new Error("Aucun fichier à uploader.");
+        }
+
+        const userDir = path.join(UPLOAD_ROOT, userId.toString());
+        if (!fs.existsSync(userDir)) {
+            fs.mkdirSync(userDir, { recursive: true });
+        }
+
+        const uploadedFiles = await Promise.all(files.map(async (file) => {
+            const physicalKey = uuidv4();
+            const targetPath = path.join(userDir, physicalKey);
+
+            fs.writeFileSync(targetPath, file.buffer);
+            
+            const newFile = await File.create({
+                name: file.originalname,
+                fullName: file.originalname,
+                size: file.size,
+                mime_type: file.mimetype,
+                physical_key: physicalKey,
+                user_id: userId,
+                folder_id: folderId
+            });
+
+            return newFile;
+        }));
+
+        return uploadedFiles;
     }
 
     async getPhysicalPath(fileId: number, userId: number): Promise<string> {
@@ -74,21 +104,18 @@ class FileService {
     }
 
     async getFileForDownload(fileId: number, userId: number) {
-        // Récupérer les métadonnées en BDD
-        const file = await File.findOne({
-            where: { id: fileId, user_id: userId }
-        });
+        const file = await File.findByPk(fileId);
 
         if (!file) {
-            throw new Error("Fichier introuvable ou accès interdit.");
+            throw new Error("Fichier introuvable.");
         }
 
-        // Construire le chemin absolu vers le fichier physique
-        const filePath = path.join('/app/uploads', userId.toString(), file.physical_key);
+        await this.verifyFileAccessOrThrow(file, userId);
 
-        // Vérifier que le fichier existe physiquement sur le disque
+        const filePath = path.join('/app/uploads', file.user_id.toString(), file.physical_key);
+
         if (!existsSync(filePath)) {
-            throw new Error("Erreur critique : Le fichier physique est introuvable.");
+            throw new Error("Erreur : Le fichier physique est introuvable.");
         }
 
         return {
@@ -114,16 +141,28 @@ class FileService {
     
         if (!file) throw new Error("Fichier introuvable.");
 
-        // Si on demande un changement de nom
         if (updates.name) {
             const ext = path.extname(updates.name);
             if (ext) {
                 updates.name = path.basename(updates.name, ext);
             }
-            // On met à jour SEULEMENT le champ name. L'extension en base ne bouge pas.
             await file.update({ name: updates.name });
         }
         return file;
+    }
+
+    private async verifyFileAccessOrThrow(file: any, userId: number): Promise<string> {
+        if (file.user_id === userId) {
+            return 'OWNER';
+        }
+        
+        const sharedPermission = await ShareService.hasFileAccess(userId, file);
+        
+        if (!sharedPermission) {
+            throw new Error("Accès interdit pour ce fichier.");
+        }
+        
+        return sharedPermission;
     }
 }
 

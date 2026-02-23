@@ -81,3 +81,29 @@ export const updateFile = async (req: Request, res: Response) => {
         }
     }
 };
+
+export const uploadFiles = async (req: Request, res: Response) => {
+    try {
+        const files = req.files as Express.Multer.File[];
+        
+        const folderId = req.body.folder_id ? parseInt(req.body.folder_id) : null;
+        
+        // @ts-ignore
+        const userId = req.user.id; 
+
+        if (!files || files.length === 0) {
+            return res.status(400).json({ message: "Aucun fichier fourni." });
+        }
+
+        const uploadedFiles = await FileService.uploadMultipleFiles(files, userId, folderId);
+
+        res.status(201).json({
+            message: `${uploadedFiles.length} fichier(s) uploadé(s) avec succès.`,
+            files: uploadedFiles
+        });
+
+    } catch (error: any) {
+        console.error("Erreur d'upload :", error);
+        res.status(500).json({ message: error.message || "Erreur lors de l'upload." });
+    }
+};
