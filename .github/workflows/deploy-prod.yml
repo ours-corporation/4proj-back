@@ -23,9 +23,7 @@ jobs:
 
       - name: Déployer avec Docker Compose
         run: |
-          # Utiliser le fichier de compose pour la production
           docker compose -f docker-compose.prod.yml pull || true
-          # arrêter et recréer pour s'assurer d'appliquer les changements (garde les volumes)
           docker compose -f docker-compose.prod.yml down || true
           docker compose -f docker-compose.prod.yml up -d --build
 
@@ -34,13 +32,13 @@ jobs:
 
       - name: Attendre la base de données
         run: |
-            # Attendre que la base de données soit prête avant de lancer les migrations
-            until docker compose -f docker-compose.prod.yml exec -T 4proj-db pg_isready -U "$DB_USER" -d "$DB_NAME"; do
-                echo "Attente de la base de données..."
-                sleep 5
-            done
+          until docker compose -f docker-compose.prod.yml exec -T 4proj-db bash -c 'pg_isready -U $POSTGRES_USER -d $POSTGRES_DB'; do
+            echo "Attente de la base de données..."
+            sleep 5
+          done
+    
 
       - name: Application des migrations
         run: |
-          docker compose -f docker-compose.prod.yml exec -T -e NODE_ENV=production 4proj-back npx sequelize-cli db:migrate --config config/sequelize.config.js
-          docker compose -f docker-compose.prod.yml exec -T -e NODE_ENV=production 4proj-back npx sequelize-cli db:seed:all --config config/sequelize.config.js
+          docker compose -f docker-compose.prod.yml exec -T 4proj-back npx -y sequelize-cli@^6 db:migrate --config config/sequelize.config.js
+          docker compose -f docker-compose.prod.yml exec -T 4proj-back npx -y sequelize-cli@^6 db:seed:all --config config/sequelize.config.js
