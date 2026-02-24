@@ -8,7 +8,7 @@ on:
 
 jobs:
   deploy:
-    runs-on: self-hosted
+    runs-on: vps
     concurrency:
       group: deploy-prod
       cancel-in-progress: true
