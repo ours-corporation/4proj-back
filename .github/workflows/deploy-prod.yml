@@ -1,4 +1,4 @@
-name: Déploiement Production
+name: CI/CD Production
 
 on:
   push:
@@ -7,8 +7,17 @@ on:
   workflow_dispatch:
 
 jobs:
-  deploy:
+  ci:
+    name: Build & Lint
     runs-on: vps
+    steps:
+      - name: En attente des tests
+        run: echo "Execution des tests..."
+
+  deploy:
+    name: Déploiement Production
+    runs-on: vps
+    needs: ci
     concurrency:
       group: deploy-prod
       cancel-in-progress: true
@@ -18,11 +27,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Créer le fichier .env à partir des secrets
-        run: |
-          echo "${{ secrets.PROD_ENV_FILE }}" > .env
-
-      - name: Afficher le chemin courant
-        run: pwd
+        run: echo "${{ secrets.PROD_ENV_FILE }}" > .env
 
       - name: Déployer avec Docker Compose
         run: |
@@ -39,7 +44,6 @@ jobs:
             echo "Attente de la base de données..."
             sleep 5
           done
-    
 
       - name: Application des migrations
         run: |
