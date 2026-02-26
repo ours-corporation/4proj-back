@@ -1,16 +1,13 @@
-import * as fs from 'fs'; // synchronous helpers
-import { promises as fsPromises } from 'fs'; // async fs.promises
+import fs from 'fs';
 import path from 'path';      
 import { v4 as uuidv4 } from 'uuid'; 
-import { User, File, Folder, Quota } from '../models';
-import { existsSync } from 'fs';
+import { User, File, Quota } from '../models';
 import ShareService from './share';
 
 const UPLOAD_ROOT = '/app/uploads';
 
 class FileService {
 
-    
     async uploadSingleFile(file: Express.Multer.File, userId: number, folderId: number | null) {
         if (!file) throw new Error("Aucun fichier à uploader.");
 
@@ -24,7 +21,7 @@ class FileService {
         const uploadedFiles = await this.processAndSaveFiles([file], userId, folderId);
         return uploadedFiles[0]; 
     }
-    
+
     async uploadMultipleFiles(files: Express.Multer.File[], userId: number, folderId: number | null) {
         if (!files || files.length === 0) throw new Error("Aucun fichier à uploader.");
 
@@ -47,11 +44,13 @@ class FileService {
     }
 
     async getPhysicalPath(fileId: number, userId: number): Promise<string> {
-        const file = await File.findOne({ where: { id: fileId, user_id: userId } });
+        const file = await File.findByPk(fileId);
         
-        if (!file) throw new Error("Fichier introuvable ou accès refusé");
+        if (!file) throw new Error("Fichier introuvable");
 
-        return path.join(UPLOAD_ROOT, userId.toString(), file.physical_key);
+        await this.verifyFileAccessOrThrow(file, userId);
+
+        return path.join(UPLOAD_ROOT, file.user_id.toString(), file.physical_key);
     }
 
     async getFileForDownload(fileId: number, userId: number) {
@@ -65,7 +64,7 @@ class FileService {
 
         const filePath = path.join('/app/uploads', file.user_id.toString(), file.physical_key);
 
-        if (!existsSync(filePath)) {
+        if (!fs.existsSync(filePath)) {
             throw new Error("Erreur : Le fichier physique est introuvable.");
         }
 
@@ -88,16 +87,24 @@ class FileService {
     }
 
     async updateFile(fileId: number, userId: number, updates: { name?: string }) {
-        const file = await File.findOne({ where: { id: fileId, user_id: userId } });
+        const file = await File.findByPk(fileId);
     
         if (!file) throw new Error("Fichier introuvable.");
 
+        const access = await this.verifyFileAccessOrThrow(file, userId);
+        if(access!== 'OWNER' && access !== 'WRITE'){
+            throw new Error("Accès interdit pour ce fichier.");
+        }
+
         if (updates.name) {
-            const ext = path.extname(updates.name);
-            if (ext) {
-                updates.name = path.basename(updates.name, ext);
-            }
-            await file.update({ name: updates.name });
+            const originalExt = path.extname(file.fullName)
+
+            const cleanNewName = path.basename(updates.name, path.extname(updates.name));
+            
+            await file.update({ 
+                name: cleanNewName,
+                fullName: cleanNewName + originalExt
+            });
         }
         return file;
     }

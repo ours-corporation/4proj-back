@@ -3,24 +3,30 @@ import fs from 'fs';
 import path from 'path';
 import FileService from '../src/services/file';
 import ShareService from '../src/services/share';
-import { File } from '../src/models';
+import { File, User, Quota } from '../src/models';
 
 vi.mock('../src/models', () => ({
     File: { 
         create: vi.fn(), 
-        findByPk: vi.fn() 
+        findByPk: vi.fn(),
+        sum: vi.fn()
     },
     Share: { 
         findOne: vi.fn() 
-    }
+    },
+    User: {
+        findByPk: vi.fn()
+    },
+    Quota: {}
 }));
-
 
 vi.mock('fs', () => {
     const mockFs = {
         existsSync: vi.fn(),
         mkdirSync: vi.fn(),
-        writeFileSync: vi.fn()
+        writeFileSync: vi.fn(),
+        renameSync: vi.fn(),
+        unlinkSync: vi.fn()
     };
     
     return {
@@ -48,10 +54,19 @@ describe('FileService', () => {
     describe('uploadMultipleFiles', () => {
         const userId = 42;
         const folderId = 10;
+        
         const mockFiles: any[] = [
-            { originalname: 'vacances.jpg', size: 1024, mimetype: 'image/jpeg', buffer: Buffer.from('fake data') },
-            { originalname: 'facture.pdf', size: 2048, mimetype: 'application/pdf', buffer: Buffer.from('fake data 2') }
+            { originalname: 'vacances.jpg', size: 1024, mimetype: 'image/jpeg', path: '/tmp/fake-file-1' },
+            { originalname: 'facture.pdf', size: 2048, mimetype: 'application/pdf', path: '/tmp/fake-file-2' }
         ];
+
+        beforeEach(() => {
+            (User.findByPk as any).mockResolvedValue({
+                id: userId,
+                quota: { quota_bytes: 30 * 1024 * 1024 * 1024 }
+            });
+            (File.sum as any).mockResolvedValue(0);
+        });
 
         it('devrait jeter une erreur si aucun fichier n\'est fourni', async () => {
             await expect(FileService.uploadMultipleFiles([], userId, folderId))
@@ -82,9 +97,9 @@ describe('FileService', () => {
 
             expect(results).toHaveLength(2);
 
-            expect(fs.writeFileSync).toHaveBeenCalledWith(
-                path.join('/app/uploads', userId.toString(), 'fake-uuid-1234-5678'), 
-                mockFiles[0].buffer
+            expect(fs.renameSync).toHaveBeenCalledWith(
+                '/tmp/fake-file-1',
+                path.join('/app/uploads', userId.toString(), 'fake-uuid-1234-5678')
             );
             
             expect(File.create).toHaveBeenCalledWith(expect.objectContaining({
@@ -95,7 +110,7 @@ describe('FileService', () => {
                 folder_id: 10
             }));
 
-            expect(fs.writeFileSync).toHaveBeenCalledTimes(2);
+            expect(fs.renameSync).toHaveBeenCalledTimes(2);
             expect(File.create).toHaveBeenCalledTimes(2);
         });
     });
