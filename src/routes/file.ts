@@ -52,7 +52,7 @@ const upload = multer({ storage: multer.memoryStorage() });
  *       413:
  *         description: Quota dépassé
  */
-filesRouter.post('/upload',requireAuth,upload.single('file'),uploadFile);
+filesRouter.post('/upload',requireAuth,upload.single('file'), validate(uploadFilesSchema),uploadFile);
 
 /**
  * @swagger
@@ -86,7 +86,7 @@ filesRouter.post('/upload',requireAuth,upload.single('file'),uploadFile);
  *       400:
  *         description: Aucun fichier envoyé ou données invalides
  */
-filesRouter.post('/upload', requireAuth, upload.array('files', 50), validate(uploadFilesSchema) ,uploadFiles);
+filesRouter.post('/uploads', requireAuth, upload.array('files', 50), validate(uploadFilesSchema) ,uploadFiles);
 
 /**
  * @swagger

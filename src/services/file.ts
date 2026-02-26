@@ -11,88 +11,39 @@ const UPLOAD_ROOT = '/app/uploads';
 class FileService {
 
     
-    async uploadFile(userId: number, file: Express.Multer.File, parentId: number | null) {
-        
-        const user = await User.findByPk(userId, { include: [Quota] });
-        if (!user) throw new Error("Utilisateur introuvable");
-
-        const currentUsage = BigInt(user.used_bytes);
-        const fileSize = BigInt(file.size);
-        const quotaLimit = user.quota_id ? BigInt(32212254720) : BigInt(0); // 30GB
-        
-        if ((currentUsage + fileSize) > quotaLimit) {
-            throw new Error("Quota de stockage dépassé (30 Go max).");
-        }
-
-        const physicalKey = uuidv4(); 
-        const userDir = path.join(UPLOAD_ROOT, userId.toString());
-        
-        await fsPromises.mkdir(userDir, { recursive: true });
-
-        const physicalPath = path.join(userDir, physicalKey);
+    async uploadSingleFile(file: Express.Multer.File, userId: number, folderId: number | null) {
+        if (!file) throw new Error("Aucun fichier à uploader.");
 
         try {
-            await fsPromises.writeFile(physicalPath, file.buffer);
-
-            const extWithDot = path.extname(file.originalname);
-            const extension = extWithDot ? extWithDot.substring(1) : null; 
-            const name = path.basename(file.originalname, extWithDot);
-
-            const newFile = await File.create({
-                user_id: userId,
-                folder_id: parentId,
-                name: name,
-                extension: extension,
-                physical_key: physicalKey,
-                size_bytes: fileSize,
-                mime_type: file.mimetype
-            });
-
-            user.used_bytes = Number(currentUsage + fileSize); 
-            await user.save();
-
-            return newFile;
-
+            await this.checkUserQuota(userId, file.size);
         } catch (error) {
-            try {
-                await fsPromises.unlink(physicalPath);
-            } catch (unlinkError) {
-                console.error("Erreur lors du nettoyage du fichier orphelin:", unlinkError);
-            }
+            this.cleanupTempFiles([file]);
             throw error;
         }
+
+        const uploadedFiles = await this.processAndSaveFiles([file], userId, folderId);
+        return uploadedFiles[0]; 
     }
-
+    
     async uploadMultipleFiles(files: Express.Multer.File[], userId: number, folderId: number | null) {
-        if (!files || files.length === 0) {
-            throw new Error("Aucun fichier à uploader.");
+        if (!files || files.length === 0) throw new Error("Aucun fichier à uploader.");
+
+        const totalIncomingSize = files.reduce((acc, file) => acc + file.size, 0);
+
+        const MAX_BATCH_SIZE = 500 * 1024 * 1024;
+        if (totalIncomingSize > MAX_BATCH_SIZE) {
+            this.cleanupTempFiles(files);
+            throw new Error("Le poids total de cet envoi dépasse la limite autorisée de 500 Mo.");
         }
 
-        const userDir = path.join(UPLOAD_ROOT, userId.toString());
-        if (!fs.existsSync(userDir)) {
-            fs.mkdirSync(userDir, { recursive: true });
+        try {
+            await this.checkUserQuota(userId, totalIncomingSize);
+        } catch (error) {
+            this.cleanupTempFiles(files);
+            throw error;
         }
 
-        const uploadedFiles = await Promise.all(files.map(async (file) => {
-            const physicalKey = uuidv4();
-            const targetPath = path.join(userDir, physicalKey);
-
-            fs.writeFileSync(targetPath, file.buffer);
-            
-            const newFile = await File.create({
-                name: file.originalname,
-                fullName: file.originalname,
-                size: file.size,
-                mime_type: file.mimetype,
-                physical_key: physicalKey,
-                user_id: userId,
-                folder_id: folderId
-            });
-
-            return newFile;
-        }));
-
-        return uploadedFiles;
+        return await this.processAndSaveFiles(files, userId, folderId);
     }
 
     async getPhysicalPath(fileId: number, userId: number): Promise<string> {
@@ -163,6 +114,57 @@ class FileService {
         }
         
         return sharedPermission;
+    }
+
+    private async checkUserQuota(userId: number, incomingBytes: number) {
+        const user = await User.findByPk(userId, { include: [Quota] });
+        if (!user || !user.quota) {
+            throw new Error("Utilisateur ou quota introuvable.");
+        }
+
+        const maxQuotaBytes = Number(user.quota.quota_bytes);
+
+        const currentUsage = await File.sum('size', { 
+            where: { user_id: userId } 
+        }) || 0;
+
+        if (currentUsage + incomingBytes > maxQuotaBytes) {
+            const usedGb = (currentUsage / 1024 / 1024 / 1024).toFixed(2);
+            const maxGb = (maxQuotaBytes / 1024 / 1024 / 1024).toFixed(2);
+            throw new Error(`Espace insuffisant. Vous avez atteint votre quota.`);
+        }
+    }
+    
+    private async processAndSaveFiles(files: Express.Multer.File[], userId: number, folderId: number | null) {
+        const userDir = path.join(UPLOAD_ROOT, userId.toString());
+        if (!fs.existsSync(userDir)) {
+            fs.mkdirSync(userDir, { recursive: true });
+        }
+
+        return await Promise.all(files.map(async (file) => {
+            const physicalKey = uuidv4();
+            const targetPath = path.join(userDir, physicalKey);
+
+            fs.renameSync(file.path, targetPath);
+
+            return await File.create({
+                name: file.originalname,
+                fullName: file.originalname,
+                size: file.size,
+                mime_type: file.mimetype,
+                physical_key: physicalKey,
+                user_id: userId,
+                folder_id: folderId
+            });
+        }));
+    }
+
+    private cleanupTempFiles(files: Express.Multer.File[]) {
+        for (const file of files) {
+            if (fs.existsSync(file.path)) {
+                fs.unlinkSync(file.path);
+            }
+        }
     }
 }
 
