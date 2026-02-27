@@ -5,21 +5,18 @@ import { SearchFilters } from '../validator/search';
 class SearchService {
 
     async search(userId: number, filters: SearchFilters) {
-        const { q, trash, type, category, minSize, maxSize, after, before } = filters;
-        const searchTerm = `%${q}%`;
-
-        // Si trash=true, on cherche CE QUI EST supprimé.
-        const trashFilter = trash 
+        const { q, trash, category, minSize, maxSize, after, before } = filters;
+        const type = filters.type || 'all';
+        
+        const trashCondition = trash 
             ? { [Op.not]: null } 
-            : null;
+            : { [Op.is]: null };
 
-        const commonWhere: WhereOptions = {
+        const commonWhere: any = {
             user_id: userId,
-            name: { [Op.iLike]: searchTerm },
-            trashed_at: trashFilter
+            trashed_at: trashCondition
         };
 
-        // Ajout filtre Date si présent
         if (after || before) {
             commonWhere.createdAt = {};
             if (after) commonWhere.createdAt[Op.gte] = after;
@@ -30,16 +27,24 @@ class SearchService {
         let folders: Folder[] = [];
 
         if (type === 'all' || type === 'file') {
-            const fileWhere: WhereOptions = { ...commonWhere };
+            const fileWhere: any = { ...commonWhere };
 
-            // Filtre Taille
+            if (q) {
+                const searchTerm = `%${q}%`;
+                const searchExtension = `%${q.replace('.', '')}%`; 
+
+                fileWhere[Op.or] = [
+                    { name: { [Op.iLike]: searchTerm } },
+                    { extension: { [Op.iLike]: searchExtension } }
+                ];
+            }
+
             if (minSize || maxSize) {
                 fileWhere.size_bytes = {};
                 if (minSize) fileWhere.size_bytes[Op.gte] = minSize;
                 if (maxSize) fileWhere.size_bytes[Op.lte] = maxSize;
             }
 
-            // Filtre Catégorie (Mime Type)
             if (category) {
                 switch (category) {
                     case 'image':
@@ -56,7 +61,7 @@ class SearchService {
                             [Op.or]: [
                                 { [Op.iLike]: 'application/pdf' },
                                 { [Op.iLike]: 'application/msword' },
-                                { [Op.iLike]: 'application/vnd.openxmlformats-%' }, // Office
+                                { [Op.iLike]: 'application/vnd.openxmlformats-%' },
                                 { [Op.iLike]: 'text/%' }
                             ]
                         };
@@ -65,14 +70,20 @@ class SearchService {
             }
 
             files = await File.findAll({
-                where: fileWhere,
+                where: fileWhere as WhereOptions,
                 order: [['updatedAt', 'DESC']]
             });
         }
 
         if ((type === 'all' || type === 'folder') && !category && !minSize && !maxSize) {
+            const folderWhere: any = { ...commonWhere };
+            
+            if (q) {
+                folderWhere.name = { [Op.iLike]: `%${q}%` };
+            }
+
             folders = await Folder.findAll({
-                where: commonWhere,
+                where: folderWhere as WhereOptions,
                 order: [['updatedAt', 'DESC']]
             });
         }
