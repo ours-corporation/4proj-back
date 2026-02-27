@@ -1,0 +1,12 @@
+.git
+.github
+.gitignore
+node_modules
+npm-debug.log*
+.env
+Dockerfile*
+docker-compose*.yml
+dist
+coverage
+.vscode
+.DS_Store

@@ -11,3 +11,15 @@ export const updateUserValidatorSchema = z.object({
                  .email("Invalid email format"),
     })
 });
+
+export const updatePasswordValidatorSchema = z.object({
+    body: z.object({
+        lastPassword: z.string({ message: "L'ancien mot de passe est requis" }),
+        NewPassword: z.string({ message: "Le mot de passe est requis" })
+                        .min(12, "Le mot de passe doit contenir au moins 12 caractères")
+                        .refine((val) => /[A-Z]/.test(val), { message: "Le mot de passe doit contenir au moins une lettre majuscule" })
+                        .refine((val) => /[a-z]/.test(val), { message: "Le mot de passe doit contenir au moins une lettre minuscule" })
+                        .refine((val) => /[0-9]/.test(val), { message: "Le mot de passe doit contenir au moins un chiffre" })
+                        .refine((val) => /[!@#$%^&*]/.test(val), { message: "Le mot de passe doit contenir au moins un caractère spécial (! @ # $ % ^ & *)" }),
+    })
+});
