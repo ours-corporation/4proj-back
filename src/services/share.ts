@@ -34,7 +34,7 @@ class ShareService {
             token: token,
             password_hash: passwordHash,
             expires_at: expiresAtDate,
-            permission: 'READ' // Public est toujours en lecture seule par sécurité
+            permission: 'READ'
         });
 
         return {
@@ -69,9 +69,7 @@ class ShareService {
 
         const [share, created] = await Share.findOrCreate({
             where: whereClause,
-            defaults: {
-                permission: permission
-            }
+            defaults: { permission: permission }
         });
 
         if (!created) {
@@ -87,7 +85,7 @@ class ShareService {
             include: [
                 { model: File },
                 { model: Folder },
-                { model: User, as: 'owner', attributes: ['username'] } // Pour afficher "Partagé par X"
+                { model: User, as: 'owner', attributes: ['username'] }
             ]
         });
 
@@ -101,7 +99,6 @@ class ShareService {
             if (!passwordInput) {
                 return { protected: true, shareId: share.id }; 
             }
-
             const match = await bcrypt.compare(passwordInput, share.password_hash);
             if (!match) {
                 throw new Error("Mot de passe incorrect.");
@@ -123,11 +120,7 @@ class ShareService {
             include: [
                 { model: File },
                 { model: Folder },
-                { 
-                    model: User, 
-                    as: 'owner', 
-                    attributes: ['id', 'username', 'email'] // On veut savoir qui partage
-                }
+                { model: User, as: 'owner', attributes: ['id', 'username', 'email'] }
             ]
         });
 
@@ -135,7 +128,6 @@ class ShareService {
         const folders: any[] = [];
 
         for (const share of shares) {
-            
             if (share.file) {
                 files.push({
                     ...share.file.toJSON(), 
@@ -143,11 +135,8 @@ class ShareService {
                     share_id: share.id, 
                     owner: share.owner
                 });
-            } 
-            
-            else if (share.folder) {
+            } else if (share.folder) {
                 folders.push({
-                    // On étale les propriétés du dossier
                     ...share.folder.toJSON(),
                     permission: share.permission,
                     share_id: share.id,
@@ -156,29 +145,47 @@ class ShareService {
             }
         }
 
-        // On n'a pas de breadcrumbs ou current ici car on est à la racine virtuelle "Partagés avec moi"
-        return {
-            files,
-            folders
-        };
+        return { files, folders };
     }
 
     async revokeShare(ownerId: number, shareId: number) {
         const share = await Share.findOne({ where: { id: shareId, owner_id: ownerId } });
         if (!share) throw new Error("Partage introuvable ou vous n'êtes pas le propriétaire.");
-        
         await share.destroy();
     }
 
-    // --- Helpers ---
+    async hasFolderAccess(userId: number, folderId: number): Promise<'READ' | 'WRITE' | null> {
+        let currentFolderId: number | null = folderId;
 
+        while (currentFolderId !== null) {
+            const share = await Share.findOne({
+                where: {
+                    recipient_id: userId,
+                    folder_id: currentFolderId
+                }
+            });
+
+            if (share) {
+                return share.permission;
+            }
+
+            const fetchedFolder: Folder | null = await Folder.findByPk(currentFolderId);
+            
+            if (!fetchedFolder) return null;
+            
+            currentFolderId = fetchedFolder.parent_id;
+        }
+
+        return null;
+    }
+    
     private async verifyOwnership(userId: number, type: 'file' | 'folder', id: number) {
         if (type === 'file') {
             const file = await File.findOne({ where: { id, user_id: userId } });
             if (!file) throw new Error("Fichier introuvable ou vous n'avez pas les droits.");
         } else {
-            const folder = await Folder.findOne({ where: { id, user_id: userId } });
-            if (!folder) throw new Error("Dossier introuvable ou vous n'avez pas les droits.");
+            const targetFolder = await Folder.findOne({ where: { id, user_id: userId } });
+            if (!targetFolder) throw new Error("Dossier introuvable ou vous n'avez pas les droits.");
         }
     }
 }

@@ -1,15 +1,15 @@
 import { Request, Response } from 'express';
 import ShareService from '../services/share';
+import FolderService from '../services/folder';
 
 // POST /shares/public
 export const createPublicShare = async (req: Request, res: Response) => {
     try {
-        // On détermine si c'est un fichier ou un dossier
         const target = req.body.fileId 
             ? { type: 'file' as const, id: req.body.fileId }
             : { type: 'folder' as const, id: req.body.folderId };
 
-        // @ts-ignore (User injecté par middleware auth)
+        // @ts-ignore
         const ownerId = req.user.id;
 
         const result = await ShareService.createPublicLink(ownerId, target, {
@@ -94,5 +94,38 @@ export const revokeShare = async (req: Request, res: Response) => {
     } catch (error: any) {
         console.error(error);
         res.status(400).json({ message: error.message });
+    }
+};
+
+//GET /public/download/:token
+export const downloadPublicFolder = async (req: Request, res: Response) => {
+    try {
+        const { token } = req.params;
+        const password = req.body.password || req.query.password; 
+
+        const shareInfo = await ShareService.getPublicContent(token, password as string);
+
+        if (shareInfo.protected) {
+            return res.status(403).json({ message: "Mot de passe requis pour télécharger." });
+        }
+
+        if (shareInfo.type !== 'folder') {
+            return res.status(400).json({ message: "Ce lien pointe vers un fichier, pas un dossier." });
+        }
+
+        const folder = shareInfo.data as any;
+
+        res.setHeader('Content-Type', 'application/zip');
+        res.setHeader('Content-Disposition', `attachment; filename="${encodeURIComponent(folder.name)}.zip"`);
+
+        await FolderService.createZipStream(folder.id, folder.name, res);
+
+    } catch (error: any) {
+        console.error(error);
+        if (!res.headersSent) {
+            res.status(404).json({ message: error.message });
+        } else {
+            res.end();
+        }
     }
 };

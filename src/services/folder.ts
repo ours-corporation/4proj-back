@@ -1,4 +1,10 @@
 import { Folder, File, Share } from '../models';
+import archiver from 'archiver';
+import path from 'path';
+import { existsSync } from 'fs';
+import ShareService from './share';
+
+const UPLOAD_ROOT = '/app/uploads';
 
 class FolderService {
     
@@ -11,7 +17,6 @@ class FolderService {
             }
 
             if (parentFolder.user_id !== userId) {
-                // Vérifier si on a le droit d'écriture via partage
                 const access = await this.hasFolderAccess(userId, parentId);
                 if (access !== 'WRITE') {
                      throw new Error("Accès interdit : Vous ne pouvez pas créer de dossier ici.");
@@ -32,7 +37,7 @@ class FolderService {
         
         let currentFolder = null;
         let breadcrumbs: any[] = [];
-        let permission: 'READ' | 'WRITE' | 'OWNER' = 'OWNER'; // Par défaut OWNER (pour la racine)
+        let permission: 'READ' | 'WRITE' | 'OWNER' = 'OWNER';
 
         if (folderId) {
             currentFolder = await Folder.findByPk(folderId);
@@ -52,7 +57,6 @@ class FolderService {
                 permission = sharedPermission;
             }
 
-            // Construction du fil d'ariane
             let tempFolder: any = currentFolder;
             while (tempFolder) {
                 breadcrumbs.unshift({
@@ -75,21 +79,17 @@ class FolderService {
         };
 
         if (folderId) {
-            // Dans un dossier spécifique
-            contentWhereClause.parent_id = folderId; // Pour les dossiers enfants
+            contentWhereClause.parent_id = folderId;
         } else {
-            // À la racine
             contentWhereClause.parent_id = null;
             contentWhereClause.user_id = userId;
         }
 
-        // Requête Dossiers
         const folders = await Folder.findAll({
             where: contentWhereClause,
             order: [['name', 'ASC']]
         });
 
-        // Requête Fichiers
         const fileWhereClause: any = {
             trashed_at: null
         };
@@ -113,12 +113,10 @@ class FolderService {
         };
     }
 
-    // Helper pour vérifier si un utilisateur a accès à un dossier partagé
     async hasFolderAccess(userId: number, folderId: number): Promise<'READ' | 'WRITE' | null> {
         let currentFolderId: number | null = folderId;
 
         while (currentFolderId !== null) {
-            // 1. Partage direct ?
             const share = await Share.findOne({
                 where: {
                     recipient_id: userId,
@@ -130,8 +128,6 @@ class FolderService {
                 return share.permission;
             }
 
-            // 2. Remonter au parent
-            // CORRECTION ICI : On utilise bien Folder (la classe) pour chercher
             const fetchedFolder: Folder | null = await Folder.findByPk(currentFolderId);
             
             if (!fetchedFolder) return null;
@@ -140,6 +136,66 @@ class FolderService {
         }
 
         return null;
+    }
+
+    async createZipStream(folderId: number, folderName: string, outputStream: NodeJS.WritableStream): Promise<void> {
+        const filesToZip = await this.getAllFilesInFolder(folderId, folderName);
+
+        if (filesToZip.length === 0) {
+            throw new Error("Le dossier est vide.");
+        }
+
+        const archive = archiver('zip', { zlib: { level: 5 } });
+        archive.pipe(outputStream);
+
+        archive.on('error', (err) => { throw err; });
+
+        for (const file of filesToZip) {
+            if (existsSync(file.physicalPath)) {
+                archive.file(file.physicalPath, { name: file.archivePath });
+            }
+        }
+
+        await archive.finalize();
+    }
+
+    async streamFolderZip(folderId: number, userId: number, outputStream: NodeJS.WritableStream): Promise<void> {
+        const folder = await Folder.findByPk(folderId);
+        if (!folder) throw new Error("Dossier introuvable.");
+
+        if (folder.user_id !== userId) {
+            const access = await ShareService.hasFolderAccess(userId, folderId);
+            if (!access) throw new Error("Accès interdit pour le téléchargement.");
+        }
+
+        await this.createZipStream(folderId, folder.name, outputStream);
+    }
+
+    async getAllFilesInFolder(folderId: number, currentPath: string): Promise<{ physicalPath: string, archivePath: string }[]> {
+        let results: { physicalPath: string, archivePath: string }[] = [];
+
+        const files = await File.findAll({ 
+            where: { folder_id: folderId, trashed_at: null } 
+        });
+
+        for (const file of files) {
+            results.push({
+                physicalPath: path.join(UPLOAD_ROOT, file.user_id.toString(), file.physical_key),
+                archivePath: path.join(currentPath, file.fullName) 
+            });
+        }
+
+        const subfolders = await Folder.findAll({ 
+            where: { parent_id: folderId, trashed_at: null } 
+        });
+
+        for (const sub of subfolders) {
+            const newPath = path.join(currentPath, sub.name);
+            const subFiles = await this.getAllFilesInFolder(sub.id, newPath);
+            results = results.concat(subFiles);
+        }
+
+        return results;
     }
 }
 

@@ -62,7 +62,6 @@ apiRouter.use('/shares', requireAuth, shareRouter);
 apiRouter.use('/public', publicRouter);
 apiRouter.use('/search', requireAuth, searchRouter);
 
-// ...
 
 app.use('/api', apiRouter);
 

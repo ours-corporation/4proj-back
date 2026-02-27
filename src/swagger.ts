@@ -192,7 +192,8 @@ const options: swaggerJsdoc.Options = {
                     properties: {
                         password: { 
                             type: 'string', 
-                            description: 'Mot de passe (requis seulement si le lien est protégé)' 
+                            description: 'Mot de passe (requis seulement si le lien est protégé)' ,
+                            example: 'monSuperMotDePasse123'
                         }
                     }
                 },
