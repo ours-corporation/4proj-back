@@ -48,4 +48,3 @@ jobs:
       - name: Application des migrations
         run: |
           docker compose -f docker-compose.prod.yml exec -T 4proj-back npx -y sequelize-cli@^6 db:migrate --config config/sequelize.config.js
-          docker compose -f docker-compose.prod.yml exec -T 4proj-back npx -y sequelize-cli@^6 db:seed:all --config config/sequelize.config.js
