@@ -1,7 +1,7 @@
 import { Router, Request, Response } from 'express';
 import { getMe, updateMe, deleteMe, updatePassword, getUserById } from "../controllers/user";
 import { validate } from '../middleware/validate';
-import {updateUserValidatorSchema} from "../validator/user";
+import {updatePasswordValidatorSchema, updateUserValidatorSchema} from "../validator/user";
 
 const usersRouter = Router();
 
@@ -35,6 +35,9 @@ const usersRouter = Router();
  *                     id:
  *                       type: integer
  *                       example: 1
+ *                     username:
+ *                        type: string
+ *                        example: johndoe
  *                     email:
  *                       type: string
  *                       example: user@example.com
@@ -61,9 +64,7 @@ const usersRouter = Router();
  *       404:
  *         description: Utilisateur introuvable
  */
-usersRouter.get('/me', async (req: Request, res: Response) => {
-    return getMe(req, res);
-});
+usersRouter.get('/me', async (req: Request, res: Response) => {return getMe(req, res);});
 
 /**
  * @swagger
@@ -74,7 +75,7 @@ usersRouter.get('/me', async (req: Request, res: Response) => {
  *     tags:
  *       - Users
  *     summary: Met à jour les informations de l'utilisateur connecté
- *     description: Permet à l'utilisateur connecté de mettre à jour son email.
+ *     description: Permet à l'utilisateur connecté de mettre à jour son email et/ou son nom d'utilisateur.
  *     requestBody:
  *       required: true
  *       content:
@@ -84,10 +85,16 @@ usersRouter.get('/me', async (req: Request, res: Response) => {
  *             properties:
  *               email:
  *                 type: string
+ *                 format: email
  *                 description: Nouvel email de l'utilisateur
+ *                 example: user@example.com
+ *               username:
+ *                 type: string
+ *                 description: Nouveau nom d'utilisateur
+ *                 example: john_doe
  *     responses:
  *       200:
- *         description: Utilisateur mis à jour
+ *         description: Utilisateur mis à jour avec succès
  *         content:
  *           application/json:
  *             schema:
@@ -98,8 +105,13 @@ usersRouter.get('/me', async (req: Request, res: Response) => {
  *                   properties:
  *                     id:
  *                       type: integer
+ *                       example: 1
  *                     email:
  *                       type: string
+ *                       example: user@example.com
+ *                     username:
+ *                       type: string
+ *                       example: john_doe
  *       404:
  *         description: Utilisateur introuvable
  *         content:
@@ -109,7 +121,7 @@ usersRouter.get('/me', async (req: Request, res: Response) => {
  *               properties:
  *                 message:
  *                   type: string
- *                   example: "Utilisateur introuvable"
+ *                   example: Utilisateur introuvable
  *       500:
  *         description: Erreur serveur
  *         content:
@@ -119,11 +131,9 @@ usersRouter.get('/me', async (req: Request, res: Response) => {
  *               properties:
  *                 message:
  *                   type: string
- *                   example: "Erreur serveur"
+ *                   example: Erreur serveur
  */
-usersRouter.put('/me', async (req: Request, res: Response) => {
-    return updateMe(req, res);
-});
+usersRouter.put('/me', async (req: Request, res: Response) => {return updateMe(req, res);});
 
 /**
  * @swagger
@@ -159,31 +169,43 @@ usersRouter.put('/me', async (req: Request, res: Response) => {
  *                   type: string
  *                   example: "Erreur serveur"
  */
-usersRouter.delete('/me', async (req: Request, res: Response) => {
-    return deleteMe(req, res);
-});
+usersRouter.delete('/me', async (req: Request, res: Response) => {return deleteMe(req, res);});
 
 /**
  * @swagger
- * /users/update-password:
+ * /users/me/update-password:
  *   put:
  *     tags:
  *       - Users
- *     summary: Met à jour le mot de passe de l'utilisateur connecté
- *     description: Permet à l'utilisateur connecté de changer son mot de passe. Le nouveau mot de passe doit respecter certaines règles de sécurité.
+ *     summary: Mettre à jour le mot de passe
+ *     description: |
+ *       Permet à l'utilisateur authentifié de modifier son mot de passe.
+ *       Le nouveau mot de passe doit respecter les règles de sécurité suivantes :
+ *       - au moins 12 caractères
+ *       - une lettre minuscule
+ *       - une lettre majuscule
+ *       - un chiffre
+ *       - un caractère spécial
+ *     security:
+ *       - bearerAuth: []
  *     requestBody:
  *       required: true
  *       content:
  *         application/json:
  *           schema:
  *             type: object
+ *             required:
+ *               - lastPassword
+ *               - NewPassword
  *             properties:
  *               lastPassword:
  *                 type: string
- *                 description: L'ancien mot de passe de l'utilisateur
+ *                 description: Ancien mot de passe de l'utilisateur
+ *                 example: "AncienMotDePasse123!"
  *               NewPassword:
  *                 type: string
- *                 description: Le nouveau mot de passe respectant les règles de sécurité
+ *                 description: Nouveau mot de passe conforme aux règles de sécurité
+ *                 example: "NouveauMotDePasseFort123!"
  *     responses:
  *       200:
  *         description: Mot de passe mis à jour avec succès
@@ -194,9 +216,9 @@ usersRouter.delete('/me', async (req: Request, res: Response) => {
  *               properties:
  *                 message:
  *                   type: string
- *                   example: "Mot de passe mis à jour avec succès"
+ *                   example: Mot de passe mis à jour avec succès
  *       400:
- *         description: Mot de passe invalide ou ancien mot de passe incorrect
+ *         description: Requête invalide
  *         content:
  *           application/json:
  *             schema:
@@ -204,7 +226,13 @@ usersRouter.delete('/me', async (req: Request, res: Response) => {
  *               properties:
  *                 message:
  *                   type: string
- *                   example: "Le mot de passe doit contenir au moins 12 caractères"
+ *                   examples:
+ *                     wrongPassword:
+ *                       value: Ancien mot de passe incorrect
+ *                     noPassword:
+ *                       value: Cet utilisateur n'a pas de mot de passe défini. Veuillez utiliser la procédure de réinitialisation.
+ *                     invalidNewPassword:
+ *                       value: Le mot de passe doit contenir au moins 12 caractères
  *       404:
  *         description: Utilisateur introuvable
  *         content:
@@ -214,7 +242,7 @@ usersRouter.delete('/me', async (req: Request, res: Response) => {
  *               properties:
  *                 message:
  *                   type: string
- *                   example: "Utilisateur introuvable"
+ *                   example: Utilisateur introuvable
  *       500:
  *         description: Erreur serveur
  *         content:
@@ -224,11 +252,9 @@ usersRouter.delete('/me', async (req: Request, res: Response) => {
  *               properties:
  *                 message:
  *                   type: string
- *                   example: "Erreur serveur"
+ *                   example: Erreur serveur
  */
-usersRouter.put('/me/update-password', validate(updateUserValidatorSchema), async (req: Request, res: Response) => {
-    return updatePassword(req, res);
-});
+usersRouter.put('/me/update-password', validate(updatePasswordValidatorSchema), async (req: Request, res: Response) => {return updatePassword(req, res);});
 
 /**
  * @swagger
@@ -288,8 +314,6 @@ usersRouter.put('/me/update-password', validate(updateUserValidatorSchema), asyn
  *       404:
  *         description: Utilisateur introuvable
  */
-usersRouter.get('/:id', async (req: Request, res: Response) => {
-    return getUserById(req, res);
-});
+usersRouter.get('/:id', async (req: Request, res: Response) => {return getUserById(req, res);});
 
 export default usersRouter;

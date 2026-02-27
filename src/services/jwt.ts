@@ -1,5 +1,4 @@
 import jwt from 'jsonwebtoken';
-import User from '../models/User';
 
 export const generateAccessToken = (
     user: { id: number; email: string ; username: string }

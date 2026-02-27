@@ -1,6 +1,7 @@
+import 'reflect-metadata'; 
+import './config/sequelize';
 import express, { Request, Response } from 'express';
 import dotenv from 'dotenv';
-import User from './models/User';
 import cors from 'cors';
 import { setupSwagger } from './swagger';
 import authRoutes from './routes/auth';
@@ -9,6 +10,10 @@ import filesRouter from './routes/file';
 import { requireAuth } from './middleware/auth';
 import cookieParser from 'cookie-parser';
 import folderRouter from './routes/folder';
+import trashRouter from './routes/trash';
+import shareRouter from './routes/share';
+import publicRouter from './routes/public';
+import searchRouter from './routes/search';
 
 dotenv.config();
 
@@ -20,9 +25,21 @@ const apiRouter = express.Router();
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+app.use((req, res, next) => {
+    if (req.path.includes('/login') || req.path.includes('/auth')) {
+        console.log(`[DEBUG] Requête reçue sur ${req.path}`);
+        console.log('[DEBUG] Headers Content-Type:', req.headers['content-type']);
+        console.log('[DEBUG] Body:', req.body);
+    }
+    next();
+});
+
+const supportedOrigins = process.env.APP_URL
+    ? process.env.APP_URL.split(",")
+    : ["http://localhost:3000"];
 
 app.use(cors({
-    origin: "http://localhost:3000",
+    origin: supportedOrigins,
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
     allowedHeaders: ["Content-Type", "Authorization"],
     credentials: true,
@@ -40,6 +57,12 @@ apiRouter.use('/', authRoutes);
 apiRouter.use('/users', requireAuth, usersRouter);
 apiRouter.use('/files', requireAuth, filesRouter)
 apiRouter.use('/folders', requireAuth, folderRouter);
+apiRouter.use('/trash', requireAuth, trashRouter);
+apiRouter.use('/shares', requireAuth, shareRouter);
+apiRouter.use('/public', publicRouter);
+apiRouter.use('/search', requireAuth, searchRouter);
+
+// ...
 
 app.use('/api', apiRouter);
 

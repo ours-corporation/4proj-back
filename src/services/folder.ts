@@ -1,63 +1,61 @@
-import { Folder, File } from '../models';
+import { Folder, File, Share } from '../models';
 
 class FolderService {
     
-    /**
-     * Crée un dossier logique en base de données
-     */
     async createFolder(name: string, userId: number, parentId: number | null) {
-        
-        // 1. Si un parent est spécifié, on doit vérifier qu'il est valide
         if (parentId) {
             const parentFolder = await Folder.findByPk(parentId);
 
-            // Vérification A : Le dossier existe-t-il ?
             if (!parentFolder) {
                 throw new Error("Dossier parent introuvable.");
             }
 
-            // Vérification B : Le dossier parent appartient-il bien à l'utilisateur ?
-            // C'est CRUCIAL pour empêcher un user d'écrire chez un autre.
             if (parentFolder.user_id !== userId) {
-                throw new Error("Accès interdit : Vous ne pouvez pas créer de dossier ici.");
+                // Vérifier si on a le droit d'écriture via partage
+                const access = await this.hasFolderAccess(userId, parentId);
+                if (access !== 'WRITE') {
+                     throw new Error("Accès interdit : Vous ne pouvez pas créer de dossier ici.");
+                }
             }
         }
 
-        // 2. Création du dossier (Pointeur logique uniquement)
         const newFolder = await Folder.create({
             name: name,
-            user_id: userId,
-            parent_id: parentId // Peut être null (racine) ou un ID (sous-dossier)
+            user_id: userId, 
+            parent_id: parentId
         });
 
         return newFolder;
     }
 
-    /**
-     * Récupère le contenu d'un dossier (fichiers + sous-dossiers)
-     * et génère le fil d'ariane.
-     */
     async getFolderContent(folderId: number | null, userId: number) {
         
         let currentFolder = null;
-        let breadcrumbs = [];
+        let breadcrumbs: any[] = [];
+        let permission: 'READ' | 'WRITE' | 'OWNER' = 'OWNER'; // Par défaut OWNER (pour la racine)
 
-        // 1. SÉCURITÉ & RÉCUPÉRATION DU DOSSIER COURANT
         if (folderId) {
             currentFolder = await Folder.findByPk(folderId);
 
             if (!currentFolder) {
                 throw new Error("Dossier introuvable.");
             }
-            if (currentFolder.user_id !== userId) {
-                throw new Error("Accès interdit.");
+
+            if (currentFolder.user_id === userId) {
+                permission = 'OWNER';
+            } else {
+                const sharedPermission = await this.hasFolderAccess(userId, folderId);
+                
+                if (!sharedPermission) {
+                    throw new Error("Accès interdit.");
+                }
+                permission = sharedPermission;
             }
 
-            // 2. GÉNÉRATION DU FIL D'ARIANE (Boucle pour remonter aux parents)
-            // On part du dossier actuel et on remonte jusqu'à la racine
+            // Construction du fil d'ariane
             let tempFolder: any = currentFolder;
             while (tempFolder) {
-                breadcrumbs.unshift({ // Ajoute au début du tableau
+                breadcrumbs.unshift({
                     id: tempFolder.id,
                     name: tempFolder.name
                 });
@@ -65,39 +63,83 @@ class FolderService {
                 if (tempFolder.parent_id) {
                     tempFolder = await Folder.findByPk(tempFolder.parent_id);
                 } else {
-                    tempFolder = null; // On est arrivé à la racine
+                    tempFolder = null;
                 }
             }
         }
 
-        // Ajout de la "Racine" tout au début du fil d'ariane
         breadcrumbs.unshift({ id: null, name: 'Accueil' });
 
-        // 3. RÉCUPÉRATION DU CONTENU (Enfants)
-        // Les sous-dossiers
+        const contentWhereClause: any = {
+            trashed_at: null
+        };
+
+        if (folderId) {
+            // Dans un dossier spécifique
+            contentWhereClause.parent_id = folderId; // Pour les dossiers enfants
+        } else {
+            // À la racine
+            contentWhereClause.parent_id = null;
+            contentWhereClause.user_id = userId;
+        }
+
+        // Requête Dossiers
         const folders = await Folder.findAll({
-            where: {
-                user_id: userId,
-                parent_id: folderId // null pour la racine, ou l'ID du dossier
-            },
-            order: [['name', 'ASC']] // Tri alphabétique
+            where: contentWhereClause,
+            order: [['name', 'ASC']]
         });
 
-        // Les fichiers
+        // Requête Fichiers
+        const fileWhereClause: any = {
+            trashed_at: null
+        };
+        if (folderId) {
+            fileWhereClause.folder_id = folderId;
+        } else {
+            fileWhereClause.folder_id = null;
+            fileWhereClause.user_id = userId;
+        }
+
         const files = await File.findAll({
-            where: {
-                user_id: userId,
-                folder_id: folderId // null pour la racine, ou l'ID du dossier
-            },
+            where: fileWhereClause,
             order: [['name', 'ASC']]
         });
 
         return {
-            current: currentFolder, // Infos du dossier actuel (ou null si racine)
-            breadcrumbs: breadcrumbs, // Chemin pour la navigation (Accueil > Vacances > 2023)
-            folders: folders,       // Liste des dossiers
-            files: files            // Liste des fichiers
+            current: currentFolder ? { ...currentFolder.toJSON(), permission } : null,
+            breadcrumbs: breadcrumbs,
+            folders: folders,
+            files: files
         };
+    }
+
+    // Helper pour vérifier si un utilisateur a accès à un dossier partagé
+    async hasFolderAccess(userId: number, folderId: number): Promise<'READ' | 'WRITE' | null> {
+        let currentFolderId: number | null = folderId;
+
+        while (currentFolderId !== null) {
+            // 1. Partage direct ?
+            const share = await Share.findOne({
+                where: {
+                    recipient_id: userId,
+                    folder_id: currentFolderId
+                }
+            });
+
+            if (share) {
+                return share.permission;
+            }
+
+            // 2. Remonter au parent
+            // CORRECTION ICI : On utilise bien Folder (la classe) pour chercher
+            const fetchedFolder: Folder | null = await Folder.findByPk(currentFolderId);
+            
+            if (!fetchedFolder) return null;
+            
+            currentFolderId = fetchedFolder.parent_id;
+        }
+
+        return null;
     }
 }
 
