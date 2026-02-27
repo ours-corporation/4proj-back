@@ -188,6 +188,25 @@ class ShareService {
             if (!targetFolder) throw new Error("Dossier introuvable ou vous n'avez pas les droits.");
         }
     }
+    
+    async hasFileAccess(userId: number, file: any): Promise<'READ' | 'WRITE' | null> {
+        const share = await Share.findOne({
+            where: {
+                recipient_id: userId,
+                file_id: file.id
+            }
+        });
+
+        if (share) {
+            return share.permission;
+        }
+
+        if (file.folder_id) {
+            return await this.hasFolderAccess(userId, file.folder_id);
+        }
+
+        return null;
+    }
 }
 
 export default new ShareService();
