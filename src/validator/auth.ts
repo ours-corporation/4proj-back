@@ -1,5 +1,3 @@
-import { Request, Response } from 'express';
-import User from '../models/user';
 import { z } from 'zod';
 
 interface RegisterBody {

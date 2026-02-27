@@ -216,10 +216,8 @@ export const authWithGoogle = async (req: Request, res: Response) => {
 };
 
 export const authWithGithub = async (req: Request, res: Response) => {
-    console.log("je suis la");
     try {
         const { code } = req.body;
-
         if (!code) {
             return res.status(400).json({ error: "Authorization code is required" });
         }

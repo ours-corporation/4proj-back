@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { validate } from '../middleware/validate';
 import { accessPublicShareSchema } from '../validator/share';
 import { accessPublicShare } from '../controllers/share';
+import { downloadPublicFolder } from '../controllers/share';
 
 const publicRouter = Router();
 
@@ -61,7 +62,43 @@ const publicRouter = Router();
  *       410:
  *         description: Lien expiré
  */
-
 publicRouter.post('/access/:token',validate(accessPublicShareSchema),accessPublicShare);
+
+/**
+ * @swagger
+ * /public/download/{token}:
+ *   post:
+ *     tags:
+ *       - Public
+ *     summary: Télécharger un dossier public en ZIP
+ *     description: |
+ *       Génère et télécharge une archive ZIP du dossier partagé.
+ *       Si le lien est protégé, le mot de passe doit être envoyé dans le body.
+ *     parameters:
+ *       - in: path
+ *         name: token
+ *         required: true
+ *         schema:
+ *           type: string
+ *     requestBody:
+ *       required: false
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/ShareAccessInput'
+ *     responses:
+ *       200:
+ *         description: Fichier ZIP (Stream)
+ *         content:
+ *           application/zip:
+ *             schema:
+ *               type: string
+ *               format: binary
+ *       403:
+ *         description: Mot de passe requis ou incorrect
+ *       404:
+ *         description: Lien invalide ou expiré
+ */
+publicRouter.post('/download/:token',validate(accessPublicShareSchema),downloadPublicFolder);
 
 export default publicRouter;
