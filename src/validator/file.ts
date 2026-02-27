@@ -16,7 +16,6 @@ export const recentFileSchema = z.object({
     })
 });
 
-// Validation pour la modification
 export const updateFileSchema = z.object({
     params: z.object({
         id: z.coerce.number()
@@ -24,5 +23,11 @@ export const updateFileSchema = z.object({
     body: z.object({
         name: z.string().min(1, "Le nom ne peut pas être vide").optional(),
         // On pourra ajouter d'autres champs ici plus tard (ex: folder_id pour déplacer)
+    })
+});
+
+export const uploadFilesSchema = z.object({
+    body: z.object({
+        folder_id: z.coerce.number().int().positive().optional()
     })
 });

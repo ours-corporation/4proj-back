@@ -1,8 +1,9 @@
 import { Router } from 'express';
 import multer from 'multer';
 import { uploadFile, downloadFile, getRecentFiles, updateFile } from '../controllers/file';
+import { uploadFiles } from '../controllers/file';
 import { requireAuth } from '../middleware/auth';
-import { fileIdSchema, recentFileSchema, updateFileSchema } from '../validator/file';
+import { fileIdSchema, recentFileSchema, updateFileSchema, uploadFilesSchema } from '../validator/file';
 import { validate } from '../middleware/validate';
 import { moveToTrash, restoreFromTrash, deletePermanently } from '../controllers/trash';
 import { trashIdSchema } from '../validator/trash';
@@ -51,7 +52,41 @@ const upload = multer({ storage: multer.memoryStorage() });
  *       413:
  *         description: Quota dépassé
  */
-filesRouter.post('/upload',requireAuth,upload.single('file'),uploadFile);
+filesRouter.post('/upload',requireAuth,upload.single('file'), validate(uploadFilesSchema),uploadFile);
+
+/**
+ * @swagger
+ * /files/{id}/upload:
+ *   post:
+ *     tags:
+ *       - Files
+ *     summary: Uploader plusieurs fichiers simultanément
+ *     description: Permet d'envoyer jusqu'à 50 fichiers d'un coup dans un dossier spécifique ou à la racine.
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         multipart/form-data:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               folder_id:
+ *                 type: integer
+ *                 description: ID du dossier de destination (laisser vide pour la racine)
+ *               files:
+ *                 type: array
+ *                 description: Les fichiers à envoyer (limite 50)
+ *                 items:
+ *                   type: string
+ *                   format: binary
+ *     responses:
+ *       201:
+ *         description: Fichiers uploadés avec succès
+ *       400:
+ *         description: Aucun fichier envoyé ou données invalides
+ */
+filesRouter.post('/uploads', requireAuth, upload.array('files', 50), validate(uploadFilesSchema) ,uploadFiles);
 
 /**
  * @swagger
