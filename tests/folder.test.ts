@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import FolderService from '../src/services/folder';
 import { Folder } from '../src/models'; 
-import ShareService from '../src/services/folder';
+import ShareService from '../src/services/share';
 
 vi.mock('../src/models', () => {
     return {
