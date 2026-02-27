@@ -1,0 +1,51 @@
+name: CI/CD Production
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  ci:
+    name: Executions des tests
+    runs-on: vps
+    steps:
+      - name: En attente des tests
+        run: echo "Execution des tests..."
+
+  deploy:
+    name: Déploiement Production
+    runs-on: vps
+    needs: ci
+    concurrency:
+      group: deploy-prod
+      cancel-in-progress: true
+
+    steps:
+      - name: Checkout du code
+        uses: actions/checkout@v4
+
+      - name: Créer le fichier .env à partir des secrets
+        run: echo "${{ secrets.PROD_ENV_FILE }}" > .env
+
+      - name: Déployer avec Docker Compose
+        run: |
+          docker compose -f docker-compose.prod.yml pull || true
+          docker compose -f docker-compose.prod.yml down || true
+          docker compose -f docker-compose.prod.yml up -d --build
+
+      - name: Nettoyage images temporaires
+        run: docker image prune -f || true
+
+      - name: Attendre la base de données
+        run: |
+          until docker compose -f docker-compose.prod.yml exec -T 4proj-db bash -c 'pg_isready -U $POSTGRES_USER -d $POSTGRES_DB'; do
+            echo "Attente de la base de données..."
+            sleep 5
+          done
+
+      - name: Application des migrations
+        run: |
+          docker compose -f docker-compose.prod.yml exec -T 4proj-back npx -y sequelize-cli@^6 db:migrate --config config/sequelize.config.js
+          docker compose -f docker-compose.prod.yml exec -T 4proj-back npx -y sequelize-cli@^6 db:seed:all --config config/sequelize.config.js

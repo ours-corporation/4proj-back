@@ -19,6 +19,8 @@
     "build": "tsc",
     "start": "node dist/index.js",
     "test": "vitest"
+    "db:migrate": "sequelize-cli db:migrate",
+    "prod:run": "npm run start"
   },
   "dependencies": {
     "archiver": "^7.0.1",
