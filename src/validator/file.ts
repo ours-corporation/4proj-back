@@ -40,6 +40,12 @@ export const moveFileSchema = z.object({
     })
 });
 
+export const copyFileSchema = z.object({
+    params: z.object({
+        id: z.coerce.number().int().positive("L'ID du fichier doit être un entier positif.")
+    })
+});
+
 export const moveMultipleItemsSchema = z.object({
     body: z.object({
         items: z.array(

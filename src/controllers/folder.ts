@@ -45,6 +45,33 @@ export const getFolder = async (req: Request, res: Response) => {
     }
 };
 
+export const copyFolder = async (req: Request, res: Response) => {
+    try {
+        const folderId = parseInt(req.params.id);
+        // @ts-ignore
+        const userId = req.user.id;
+
+        const copiedFolder = await FolderService.copyFolder(folderId, userId);
+
+        res.status(201).json(copiedFolder);
+    } catch (error: any) {
+        console.error(error);
+        if (error.message.includes("corbeille")) {
+            return res.status(400).json({ message: error.message });
+        }
+        if (error.message.includes("interdit")) {
+            return res.status(403).json({ message: error.message });
+        }
+        if (error.message.includes("introuvable")) {
+            return res.status(404).json({ message: error.message });
+        }
+        if (error.message.includes("quota")) {
+            return res.status(413).json({ message: error.message });
+        }
+        res.status(500).json({ message: "Erreur serveur" });
+    }
+};
+
 export const downloadFolder = async (req: Request, res: Response) => {
     try {
         const folderId = parseInt(req.params.id);

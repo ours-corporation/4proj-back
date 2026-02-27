@@ -124,6 +124,43 @@ class FileService {
         return file;
     }
 
+    async copyFile(fileId: number, userId: number) {
+        const file = await this.findFileOrThrow(fileId);
+
+        const access = await this.verifyFileAccessOrThrow(file, userId);
+        if (access !== 'OWNER' && access !== 'WRITE') {
+            throw new Error("Accès interdit pour ce fichier.");
+        }
+
+        if (file.trashed_at) throw new Error("Impossible de copier un fichier dans la corbeille.");
+
+        await this.checkUserQuota(userId, file.size_bytes);
+
+        const existingNames = await this.getExistingFileNames(file.folder_id);
+        const copyName = this.generateCopyName(file.name, existingNames);
+
+        const sourcePath = path.join(UPLOAD_ROOT, file.user_id.toString(), file.physical_key);
+        const newPhysicalKey = uuidv4();
+        const userDir = path.join(UPLOAD_ROOT, userId.toString());
+
+        if (!fs.existsSync(userDir)) {
+            fs.mkdirSync(userDir, { recursive: true });
+        }
+
+        const targetPath = path.join(userDir, newPhysicalKey);
+        fs.copyFileSync(sourcePath, targetPath);
+
+        return await File.create({
+            name: copyName,
+            extension: file.extension,
+            size_bytes: file.size_bytes,
+            mime_type: file.mime_type,
+            physical_key: newPhysicalKey,
+            user_id: userId,
+            folder_id: file.folder_id
+        });
+    }
+
     async moveMultipleItems(
         items: { type: 'file' | 'folder'; id: number }[],
         userId: number,
@@ -207,6 +244,23 @@ class FileService {
                 folder_id: folderId
             });
         }));
+    }
+
+    private async getExistingFileNames(folderId: number | null): Promise<string[]> {
+        const where: any = { folder_id: folderId, trashed_at: null };
+        const files = await File.findAll({ where, attributes: ['name'] });
+        return files.map((f: any) => f.name);
+    }
+
+    private generateCopyName(baseName: string, existingNames: string[]): string {
+        const candidateName = `${baseName} (copie)`;
+        if (!existingNames.includes(candidateName)) return candidateName;
+
+        let counter = 2;
+        while (existingNames.includes(`${baseName} (copie ${counter})`)) {
+            counter++;
+        }
+        return `${baseName} (copie ${counter})`;
     }
 
     private cleanupTempFiles(files: Express.Multer.File[]) {

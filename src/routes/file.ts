@@ -1,9 +1,9 @@
 import { Router } from 'express';
 import upload from '../middleware/upload';
-import { uploadFile, downloadFile, getRecentFiles, updateFile, moveFile } from '../controllers/file';
+import { uploadFile, downloadFile, getRecentFiles, updateFile, moveFile, copyFile } from '../controllers/file';
 import { uploadFiles } from '../controllers/file';
 import { requireAuth } from '../middleware/auth';
-import { fileIdSchema, recentFileSchema, updateFileSchema, uploadFilesSchema, moveFileSchema } from '../validator/file';
+import { fileIdSchema, recentFileSchema, updateFileSchema, uploadFilesSchema, moveFileSchema, copyFileSchema } from '../validator/file';
 import { validate } from '../middleware/validate';
 import { moveToTrash, restoreFromTrash, deletePermanently } from '../controllers/trash';
 import { trashIdSchema } from '../validator/trash';
@@ -199,6 +199,46 @@ filesRouter.get('/:id/download',requireAuth,validate(fileIdSchema),downloadFile)
  *         description: Fichier ou dossier de destination introuvable
  */
 filesRouter.put('/:id/move',requireAuth,validate(moveFileSchema),moveFile);
+
+/**
+ * @swagger
+ * /files/{id}/copy:
+ *   post:
+ *     tags:
+ *       - Files
+ *     summary: Dupliquer un fichier
+ *     description: |
+ *       Crée une copie du fichier au même emplacement (même dossier).
+ *       Le fichier copié appartient à l'utilisateur qui effectue la copie.
+ *       Nécessite un accès OWNER ou WRITE sur le fichier source.
+ *       La copie physique est effectuée sur le disque et le quota est vérifié.
+ *       Le nom de la copie suit le format "nom (copie)", "nom (copie 2)", etc.
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: ID du fichier à copier
+ *     responses:
+ *       201:
+ *         description: Fichier copié avec succès
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/File'
+ *       400:
+ *         description: Le fichier est dans la corbeille
+ *       403:
+ *         description: Accès interdit (permissions insuffisantes)
+ *       404:
+ *         description: Fichier introuvable
+ *       413:
+ *         description: Quota dépassé
+ */
+filesRouter.post('/:id/copy',requireAuth,validate(copyFileSchema),copyFile);
 
 /**
  * @swagger

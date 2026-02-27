@@ -13,6 +13,12 @@ export const createFolderSchema = z.object({
     })
 });
 
+export const copyFolderSchema = z.object({
+    params: z.object({
+        id: z.string().regex(/^\d+$/, "L'ID du dossier doit être un nombre valide")
+    })
+});
+
 // Schéma pour la RÉCUPÉRATION d'un dossier (GET /:id)
 export const getFolderSchema = z.object({
     params: z.object({
