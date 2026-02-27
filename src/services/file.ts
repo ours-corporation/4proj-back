@@ -145,7 +145,8 @@ class FileService {
             const physicalKey = uuidv4();
             const targetPath = path.join(userDir, physicalKey);
 
-            fs.renameSync(file.path, targetPath);
+            fs.copyFileSync(file.path, targetPath);
+            fs.unlinkSync(file.path);
 
             return await File.create({
                 name: file.originalname,
