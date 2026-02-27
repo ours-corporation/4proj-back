@@ -51,5 +51,3 @@ Execution des seeders : (dans le conteneur app)
 ```bash
   npx sequelize-cli db:seed:all
 ```
-
-test
