@@ -1,7 +1,7 @@
 import fs from 'fs';
 import path from 'path';      
 import { v4 as uuidv4 } from 'uuid'; 
-import { User, File, Folder, Quota } from '../models';
+import { User, File, Quota } from '../models';
 import ShareService from './share';
 import FolderService from './folder';
 
@@ -45,9 +45,7 @@ class FileService {
     }
 
     async getPhysicalPath(fileId: number, userId: number): Promise<string> {
-        const file = await File.findByPk(fileId);
-        
-        if (!file) throw new Error("Fichier introuvable");
+        const file = await this.findFileOrThrow(fileId);
 
         await this.verifyFileAccessOrThrow(file, userId);
 
@@ -55,15 +53,11 @@ class FileService {
     }
 
     async getFileForDownload(fileId: number, userId: number) {
-        const file = await File.findByPk(fileId);
-
-        if (!file) {
-            throw new Error("Fichier introuvable.");
-        }
+        const file = await this.findFileOrThrow(fileId);
 
         await this.verifyFileAccessOrThrow(file, userId);
 
-        const filePath = path.join('/app/uploads', file.user_id.toString(), file.physical_key);
+        const filePath = path.join(UPLOAD_ROOT, file.user_id.toString(), file.physical_key);
 
         if (!fs.existsSync(filePath)) {
             throw new Error("Erreur : Le fichier physique est introuvable.");
@@ -88,12 +82,10 @@ class FileService {
     }
 
     async updateFile(fileId: number, userId: number, updates: { name?: string }) {
-        const file = await File.findByPk(fileId);
-    
-        if (!file) throw new Error("Fichier introuvable.");
+        const file = await this.findFileOrThrow(fileId);
 
         const access = await this.verifyFileAccessOrThrow(file, userId);
-        if(access!== 'OWNER' && access !== 'WRITE'){
+        if (access !== 'OWNER' && access !== 'WRITE') {
             throw new Error("Accès interdit pour ce fichier.");
         }
 
@@ -111,9 +103,7 @@ class FileService {
     }
 
     async moveFile(fileId: number, userId: number, destinationFolderId: number | null) {
-        const file = await File.findByPk(fileId);
-
-        if (!file) throw new Error("Fichier introuvable.");
+        const file = await this.findFileOrThrow(fileId);
 
         if (file.trashed_at) throw new Error("Impossible de déplacer un fichier dans la corbeille.");
 
@@ -123,18 +113,7 @@ class FileService {
         }
 
         if (destinationFolderId !== null) {
-            const destinationFolder = await Folder.findByPk(destinationFolderId);
-
-            if (!destinationFolder || destinationFolder.trashed_at) {
-                throw new Error("Dossier de destination introuvable.");
-            }
-
-            if (destinationFolder.user_id !== userId) {
-                const folderAccess = await ShareService.hasFolderAccess(userId, destinationFolderId);
-                if (!folderAccess || folderAccess === 'READ') {
-                    throw new Error("Accès interdit pour le dossier de destination.");
-                }
-            }
+            await FolderService.verifyDestinationFolder(destinationFolderId, userId);
         } else {
             if (file.user_id !== userId) {
                 throw new Error("Seul le propriétaire peut déplacer un fichier vers la racine.");
@@ -169,6 +148,12 @@ class FileService {
         return { moved, failed };
     }
 
+    private async findFileOrThrow(fileId: number) {
+        const file = await File.findByPk(fileId);
+        if (!file) throw new Error("Fichier introuvable.");
+        return file;
+    }
+
     private async verifyFileAccessOrThrow(file: any, userId: number): Promise<string> {
         if (file.user_id === userId) {
             return 'OWNER';
@@ -196,9 +181,7 @@ class FileService {
         }) || 0;
 
         if (currentUsage + incomingBytes > maxQuotaBytes) {
-            const usedGb = (currentUsage / 1024 / 1024 / 1024).toFixed(2);
-            const maxGb = (maxQuotaBytes / 1024 / 1024 / 1024).toFixed(2);
-            throw new Error(`Espace insuffisant. Vous avez atteint votre quota.`);
+            throw new Error("Espace insuffisant. Vous avez atteint votre quota.");
         }
     }
     

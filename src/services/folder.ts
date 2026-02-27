@@ -1,7 +1,7 @@
 import path from 'path';
 import { existsSync } from 'fs';
 import archiver from 'archiver';
-import { Folder, File, Share } from '../models'; // N'oublie pas d'importer Share !
+import { Folder, File, Share } from '../models';
 import ShareService from './share'; 
 
 const UPLOAD_ROOT = '/app/uploads';
@@ -11,7 +11,7 @@ class FolderService {
     async createFolder(name: string, userId: number, parentId: number | null) {
         if (parentId) {
             const parentFolder = await Folder.findByPk(parentId);
-            if (!parentFolder) throw new Error("Dossier parent introuvable.");
+            if (!parentFolder || parentFolder.trashed_at) throw new Error("Dossier parent introuvable.");
 
             if (parentFolder.user_id !== userId) {
                 const access = await ShareService.hasFolderAccess(userId, parentId);
@@ -96,9 +96,7 @@ class FolderService {
     }
 
     async moveFolder(folderId: number, userId: number, destinationParentId: number | null) {
-        const folder = await Folder.findByPk(folderId);
-
-        if (!folder) throw new Error("Dossier introuvable.");
+        const folder = await this.findFolderOrThrow(folderId);
 
         if (folder.trashed_at) throw new Error("Impossible de déplacer un dossier dans la corbeille.");
 
@@ -113,19 +111,7 @@ class FolderService {
             }
 
             await this.checkCircularMove(folderId, destinationParentId);
-
-            const destinationFolder = await Folder.findByPk(destinationParentId);
-
-            if (!destinationFolder || destinationFolder.trashed_at) {
-                throw new Error("Dossier de destination introuvable.");
-            }
-
-            if (destinationFolder.user_id !== userId) {
-                const folderAccess = await ShareService.hasFolderAccess(userId, destinationParentId);
-                if (!folderAccess || folderAccess === 'READ') {
-                    throw new Error("Accès interdit pour le dossier de destination.");
-                }
-            }
+            await this.verifyDestinationFolder(destinationParentId, userId);
         } else {
             if (folder.user_id !== userId) {
                 throw new Error("Seul le propriétaire peut déplacer un dossier vers la racine.");
@@ -134,6 +120,23 @@ class FolderService {
 
         await folder.update({ parent_id: destinationParentId });
         return folder;
+    }
+
+    async verifyDestinationFolder(destinationFolderId: number, userId: number) {
+        const destinationFolder = await Folder.findByPk(destinationFolderId);
+
+        if (!destinationFolder || destinationFolder.trashed_at) {
+            throw new Error("Dossier de destination introuvable.");
+        }
+
+        if (destinationFolder.user_id !== userId) {
+            const folderAccess = await ShareService.hasFolderAccess(userId, destinationFolderId);
+            if (!folderAccess || folderAccess === 'READ') {
+                throw new Error("Accès interdit pour le dossier de destination.");
+            }
+        }
+
+        return destinationFolder;
     }
 
     private async checkCircularMove(folderId: number, destinationId: number) {
