@@ -3,18 +3,15 @@ import FileService from '../services/file';
 
 export const uploadFile = async (req: Request, res: Response) => {
     try {
-        // Vérification de base
         if (!req.file) {
             return res.status(400).json({ message: "Aucun fichier envoyé" });
         }
 
-        // On récupère l'ID utilisateur depuis le token JWT (req.user injecté par le middleware d'auth)
-        // @ts-ignore (si tu n'as pas encore étendu le type Request)
+        // @ts-ignore
         const userId = req.user.id; 
         const parentId = req.body.parent_id ? parseInt(req.body.parent_id) : null;
 
-        // Appel du fameux service que nous avons créé
-        const newFile = await FileService.uploadFile(userId, req.file, parentId);
+        const newFile = await FileService.uploadSingleFile(req.file, userId, parentId);
 
         res.status(201).json(newFile);
     } catch (error: any) {
@@ -79,5 +76,31 @@ export const updateFile = async (req: Request, res: Response) => {
         } else {
             res.status(500).json({ message: "Erreur serveur" });
         }
+    }
+};
+
+export const uploadFiles = async (req: Request, res: Response) => {
+    try {
+        const files = req.files as Express.Multer.File[];
+        
+        const folderId = req.body.folder_id ? parseInt(req.body.folder_id) : null;
+        
+        // @ts-ignore
+        const userId = req.user.id; 
+
+        if (!files || files.length === 0) {
+            return res.status(400).json({ message: "Aucun fichier fourni." });
+        }
+
+        const uploadedFiles = await FileService.uploadMultipleFiles(files, userId, folderId);
+
+        res.status(201).json({
+            message: `${uploadedFiles.length} fichier(s) uploadé(s) avec succès.`,
+            files: uploadedFiles
+        });
+
+    } catch (error: any) {
+        console.error("Erreur d'upload :", error);
+        res.status(500).json({ message: error.message || "Erreur lors de l'upload." });
     }
 };

@@ -48,7 +48,7 @@ describe('Système de Téléchargement ZIP (Privé & Public)', () => {
             vi.spyOn(ShareService, 'hasFolderAccess').mockResolvedValue(null);
 
             await expect(FolderService.streamFolderZip(1, 42, mockStream))
-                .rejects.toThrow("Accès interdit pour le téléchargement.");
+                .rejects.toThrow("Accès interdit.");
         });
 
         it('devrait bloquer si le dossier est totalement vide', async () => {
