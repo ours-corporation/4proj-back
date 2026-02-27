@@ -46,6 +46,15 @@ export const copyFileSchema = z.object({
     })
 });
 
+export const thumbnailSchema = z.object({
+    params: z.object({
+        id: z.coerce.number().int().positive("L'ID du fichier doit être un entier positif.")
+    }),
+    query: z.object({
+        size: z.enum(['small', 'medium']).default('medium')
+    })
+});
+
 export const moveMultipleItemsSchema = z.object({
     body: z.object({
         items: z.array(

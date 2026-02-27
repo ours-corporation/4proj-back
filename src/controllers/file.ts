@@ -1,4 +1,5 @@
 import { Request, Response } from 'express';
+import fs from 'fs';
 import FileService from '../services/file';
 
 export const uploadFile = async (req: Request, res: Response) => {
@@ -167,6 +168,89 @@ export const copyFile = async (req: Request, res: Response) => {
             return res.status(413).json({ message: error.message });
         }
         res.status(500).json({ message: "Erreur serveur" });
+    }
+};
+
+export const getThumbnail = async (req: Request, res: Response) => {
+    try {
+        const fileId = parseInt(req.params.id);
+        const size = (req.query.size as 'small' | 'medium') || 'medium';
+
+        // @ts-ignore
+        const userId = req.user.id;
+
+        const thumbData = await FileService.getThumbnail(fileId, userId, size);
+
+        res.set('Content-Type', thumbData.mimeType);
+        res.sendFile(thumbData.path);
+    } catch (error: any) {
+        console.error(error);
+        if (error.message.includes("pas une image")) {
+            return res.status(400).json({ message: error.message });
+        }
+        if (error.message.includes("interdit")) {
+            return res.status(403).json({ message: error.message });
+        }
+        if (error.message.includes("introuvable")) {
+            return res.status(404).json({ message: error.message });
+        }
+        res.status(500).json({ message: "Erreur serveur" });
+    }
+};
+
+export const streamFile = async (req: Request, res: Response) => {
+    try {
+        const fileId = parseInt(req.params.id);
+
+        // @ts-ignore
+        const userId = req.user.id;
+
+        const fileData = await FileService.getFileForStream(fileId, userId);
+        const range = req.headers.range;
+
+        if (!range) {
+            res.writeHead(200, {
+                'Content-Length': fileData.sizeBytes,
+                'Content-Type': fileData.mimeType,
+                'Accept-Ranges': 'bytes'
+            });
+            fs.createReadStream(fileData.path).pipe(res);
+            return;
+        }
+
+        const parts = range.replace(/bytes=/, '').split('-');
+        const start = parseInt(parts[0], 10);
+        const end = parts[1] ? parseInt(parts[1], 10) : fileData.sizeBytes - 1;
+
+        if (start >= fileData.sizeBytes || end >= fileData.sizeBytes || start > end) {
+            res.writeHead(416, {
+                'Content-Range': `bytes */${fileData.sizeBytes}`
+            });
+            res.end();
+            return;
+        }
+
+        const chunkSize = end - start + 1;
+
+        res.writeHead(206, {
+            'Content-Range': `bytes ${start}-${end}/${fileData.sizeBytes}`,
+            'Accept-Ranges': 'bytes',
+            'Content-Length': chunkSize,
+            'Content-Type': fileData.mimeType
+        });
+
+        fs.createReadStream(fileData.path, { start, end }).pipe(res);
+    } catch (error: any) {
+        console.error(error);
+        if (!res.headersSent) {
+            if (error.message.includes("interdit")) {
+                return res.status(403).json({ message: error.message });
+            }
+            if (error.message.includes("introuvable")) {
+                return res.status(404).json({ message: error.message });
+            }
+            res.status(500).json({ message: "Erreur serveur" });
+        }
     }
 };
 

@@ -4,6 +4,7 @@ import archiver from 'archiver';
 import { v4 as uuidv4 } from 'uuid';
 import { Folder, File, Share, User, Quota } from '../models';
 import ShareService from './share';
+import ThumbnailService from './thumbnail';
 
 const UPLOAD_ROOT = '/app/uploads';
 
@@ -304,6 +305,8 @@ class FolderService {
             const targetPath = path.join(userDir, newPhysicalKey);
             fs.copyFileSync(sourcePath, targetPath);
 
+            await ThumbnailService.copyThumbnails(file.physical_key, file.user_id, newPhysicalKey, userId);
+
             await File.create({
                 name: file.name,
                 extension: file.extension,
@@ -340,7 +343,17 @@ class FolderService {
             File.findAll({ where: fileWhere, order: [['name', 'ASC']] })
         ]);
 
-        return { folders, files };
+        const filesWithThumbnails = await Promise.all(
+            files.map(async (file: any) => {
+                const fileJson = file.toJSON();
+                fileJson.thumbnail = ThumbnailService.isImage(file.mime_type)
+                    ? await ThumbnailService.getSmallThumbnailBase64(file.physical_key, file.user_id)
+                    : null;
+                return fileJson;
+            })
+        );
+
+        return { folders, files: filesWithThumbnails };
     }
 }
 

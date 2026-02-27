@@ -1,9 +1,9 @@
 import { Router } from 'express';
 import upload from '../middleware/upload';
-import { uploadFile, downloadFile, getRecentFiles, updateFile, moveFile, copyFile } from '../controllers/file';
+import { uploadFile, downloadFile, getRecentFiles, updateFile, moveFile, copyFile, getThumbnail, streamFile } from '../controllers/file';
 import { uploadFiles } from '../controllers/file';
 import { requireAuth } from '../middleware/auth';
-import { fileIdSchema, recentFileSchema, updateFileSchema, uploadFilesSchema, moveFileSchema, copyFileSchema } from '../validator/file';
+import { fileIdSchema, recentFileSchema, updateFileSchema, uploadFilesSchema, moveFileSchema, copyFileSchema, thumbnailSchema } from '../validator/file';
 import { validate } from '../middleware/validate';
 import { moveToTrash, restoreFromTrash, deletePermanently } from '../controllers/trash';
 import { trashIdSchema } from '../validator/trash';
@@ -239,6 +239,107 @@ filesRouter.put('/:id/move',requireAuth,validate(moveFileSchema),moveFile);
  *         description: Quota dépassé
  */
 filesRouter.post('/:id/copy',requireAuth,validate(copyFileSchema),copyFile);
+
+/**
+ * @swagger
+ * /files/{id}/thumbnail:
+ *   get:
+ *     tags:
+ *       - Files
+ *     summary: Récupérer la miniature d'une image
+ *     description: |
+ *       Retourne la miniature WebP d'un fichier image.
+ *       Les miniatures small (150x150) sont aussi incluses en base64 dans `GET /folders/:id`.
+ *       Cet endpoint est utile pour récupérer la miniature medium (400x400) au clic.
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: ID du fichier
+ *       - in: query
+ *         name: size
+ *         required: false
+ *         schema:
+ *           type: string
+ *           enum: [small, medium]
+ *           default: medium
+ *         description: Taille de la miniature (small 150x150, medium 400x400)
+ *     responses:
+ *       200:
+ *         description: Miniature WebP
+ *         content:
+ *           image/webp:
+ *             schema:
+ *               type: string
+ *               format: binary
+ *       400:
+ *         description: Le fichier n'est pas une image
+ *       403:
+ *         description: Accès interdit
+ *       404:
+ *         description: Fichier ou miniature introuvable
+ */
+filesRouter.get('/:id/thumbnail',requireAuth,validate(thumbnailSchema),getThumbnail);
+
+/**
+ * @swagger
+ * /files/{id}/stream:
+ *   get:
+ *     tags:
+ *       - Files
+ *     summary: Streamer un fichier (support HTTP Range)
+ *     description: |
+ *       Permet le streaming partiel d'un fichier (vidéo, audio, etc.) via les en-têtes HTTP Range.
+ *       - Sans en-tête Range : retourne le fichier complet (200) avec `Accept-Ranges: bytes`.
+ *       - Avec en-tête Range : retourne le segment demandé (206 Partial Content).
+ *       - Range invalide : retourne 416 Range Not Satisfiable.
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: ID du fichier à streamer
+ *       - in: header
+ *         name: Range
+ *         required: false
+ *         schema:
+ *           type: string
+ *           example: "bytes=0-1023"
+ *         description: Plage d'octets demandée (ex. bytes=0-1023)
+ *     responses:
+ *       200:
+ *         description: Fichier complet (sans Range)
+ *         headers:
+ *           Accept-Ranges:
+ *             schema:
+ *               type: string
+ *               example: bytes
+ *       206:
+ *         description: Contenu partiel (avec Range)
+ *         headers:
+ *           Content-Range:
+ *             schema:
+ *               type: string
+ *               example: "bytes 0-1023/4096"
+ *           Accept-Ranges:
+ *             schema:
+ *               type: string
+ *               example: bytes
+ *       403:
+ *         description: Accès interdit
+ *       404:
+ *         description: Fichier introuvable
+ *       416:
+ *         description: Range non satisfaisable
+ */
+filesRouter.get('/:id/stream',requireAuth,validate(fileIdSchema),streamFile);
 
 /**
  * @swagger

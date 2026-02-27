@@ -4,6 +4,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { User, File, Quota } from '../models';
 import ShareService from './share';
 import FolderService from './folder';
+import ThumbnailService from './thumbnail';
 
 const UPLOAD_ROOT = '/app/uploads';
 
@@ -150,6 +151,8 @@ class FileService {
         const targetPath = path.join(userDir, newPhysicalKey);
         fs.copyFileSync(sourcePath, targetPath);
 
+        await ThumbnailService.copyThumbnails(file.physical_key, file.user_id, newPhysicalKey, userId);
+
         return await File.create({
             name: copyName,
             extension: file.extension,
@@ -159,6 +162,39 @@ class FileService {
             user_id: userId,
             folder_id: file.folder_id
         });
+    }
+
+    async getThumbnail(fileId: number, userId: number, size: 'small' | 'medium') {
+        const file = await this.findFileOrThrow(fileId);
+        await this.verifyFileAccessOrThrow(file, userId);
+
+        if (!ThumbnailService.isImage(file.mime_type)) {
+            throw new Error("Ce fichier n'est pas une image.");
+        }
+
+        const thumbPath = ThumbnailService.getThumbnailPath(file.physical_key, file.user_id, size);
+        if (!fs.existsSync(thumbPath)) {
+            throw new Error("Thumbnail introuvable.");
+        }
+
+        return { path: thumbPath, mimeType: 'image/webp' };
+    }
+
+    async getFileForStream(fileId: number, userId: number) {
+        const file = await this.findFileOrThrow(fileId);
+        await this.verifyFileAccessOrThrow(file, userId);
+
+        const filePath = path.join(UPLOAD_ROOT, file.user_id.toString(), file.physical_key);
+
+        if (!fs.existsSync(filePath)) {
+            throw new Error("Erreur : Le fichier physique est introuvable.");
+        }
+
+        return {
+            path: filePath,
+            mimeType: file.mime_type,
+            sizeBytes: Number(file.size_bytes)
+        };
     }
 
     async moveMultipleItems(
@@ -234,7 +270,7 @@ class FileService {
 
             fs.renameSync(file.path, targetPath);
 
-            return await File.create({
+            const newFile = await File.create({
                 name: file.originalname,
                 fullName: file.originalname,
                 size: file.size,
@@ -243,6 +279,10 @@ class FileService {
                 user_id: userId,
                 folder_id: folderId
             });
+
+            await ThumbnailService.generateThumbnails(physicalKey, userId, targetPath, file.mimetype);
+
+            return newFile;
         }));
     }
 
