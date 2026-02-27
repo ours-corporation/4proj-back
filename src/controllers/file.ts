@@ -141,3 +141,19 @@ export const uploadFiles = async (req: Request, res: Response) => {
         res.status(500).json({ message: error.message || "Erreur lors de l'upload." });
     }
 };
+
+export const moveMultipleItems = async (req: Request, res: Response) => {
+    try {
+        const { items, destination_folder_id } = req.body;
+
+        // @ts-ignore
+        const userId = req.user.id;
+
+        const result = await FileService.moveMultipleItems(items, userId, destination_folder_id);
+
+        res.json(result);
+    } catch (error: any) {
+        console.error(error);
+        res.status(500).json({ message: "Erreur serveur" });
+    }
+};

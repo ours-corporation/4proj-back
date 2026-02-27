@@ -3,6 +3,7 @@ import path from 'path';
 import { v4 as uuidv4 } from 'uuid'; 
 import { User, File, Folder, Quota } from '../models';
 import ShareService from './share';
+import FolderService from './folder';
 
 const UPLOAD_ROOT = '/app/uploads';
 
@@ -142,6 +143,30 @@ class FileService {
 
         await file.update({ folder_id: destinationFolderId });
         return file;
+    }
+
+    async moveMultipleItems(
+        items: { type: 'file' | 'folder'; id: number }[],
+        userId: number,
+        destinationFolderId: number | null
+    ) {
+        const moved: { type: string; id: number }[] = [];
+        const failed: { type: string; id: number; error: string }[] = [];
+
+        for (const item of items) {
+            try {
+                if (item.type === 'file') {
+                    await this.moveFile(item.id, userId, destinationFolderId);
+                } else {
+                    await FolderService.moveFolder(item.id, userId, destinationFolderId);
+                }
+                moved.push({ type: item.type, id: item.id });
+            } catch (error: any) {
+                failed.push({ type: item.type, id: item.id, error: error.message });
+            }
+        }
+
+        return { moved, failed };
     }
 
     private async verifyFileAccessOrThrow(file: any, userId: number): Promise<string> {

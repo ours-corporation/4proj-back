@@ -14,6 +14,7 @@ import trashRouter from './routes/trash';
 import shareRouter from './routes/share';
 import publicRouter from './routes/public';
 import searchRouter from './routes/search';
+import itemsRouter from './routes/items';
 
 dotenv.config();
 
@@ -48,7 +49,6 @@ apiRouter.get('/status', (req: Request, res: Response) => {
     res.json({ status: 'OK', timestamp: new Date().toISOString() });
 });
 
-// auth routes
 apiRouter.use('/', authRoutes);
 apiRouter.use('/users', requireAuth, usersRouter);
 apiRouter.use('/files', requireAuth, filesRouter)
@@ -57,6 +57,7 @@ apiRouter.use('/trash', requireAuth, trashRouter);
 apiRouter.use('/shares', requireAuth, shareRouter);
 apiRouter.use('/public', publicRouter);
 apiRouter.use('/search', requireAuth, searchRouter);
+apiRouter.use('/items', requireAuth, itemsRouter);
 
 
 app.use('/api', apiRouter);

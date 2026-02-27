@@ -39,3 +39,15 @@ export const moveFileSchema = z.object({
         folder_id: z.coerce.number().int().positive().nullable()
     })
 });
+
+export const moveMultipleItemsSchema = z.object({
+    body: z.object({
+        items: z.array(
+            z.object({
+                type: z.enum(['file', 'folder']),
+                id: z.coerce.number().int().positive()
+            })
+        ).min(1, "Au moins un élément à déplacer."),
+        destination_folder_id: z.coerce.number().int().positive().nullable()
+    })
+});

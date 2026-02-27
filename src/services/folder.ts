@@ -95,6 +95,60 @@ class FolderService {
         return results;
     }
 
+    async moveFolder(folderId: number, userId: number, destinationParentId: number | null) {
+        const folder = await Folder.findByPk(folderId);
+
+        if (!folder) throw new Error("Dossier introuvable.");
+
+        if (folder.trashed_at) throw new Error("Impossible de déplacer un dossier dans la corbeille.");
+
+        const access = await this.verifyAccessOrThrow(folder, userId);
+        if (access !== 'OWNER') {
+            throw new Error("Seul le propriétaire peut déplacer un dossier.");
+        }
+
+        if (destinationParentId !== null) {
+            if (destinationParentId === folderId) {
+                throw new Error("Impossible de déplacer un dossier dans lui-même.");
+            }
+
+            await this.checkCircularMove(folderId, destinationParentId);
+
+            const destinationFolder = await Folder.findByPk(destinationParentId);
+
+            if (!destinationFolder || destinationFolder.trashed_at) {
+                throw new Error("Dossier de destination introuvable.");
+            }
+
+            if (destinationFolder.user_id !== userId) {
+                const folderAccess = await ShareService.hasFolderAccess(userId, destinationParentId);
+                if (!folderAccess || folderAccess === 'READ') {
+                    throw new Error("Accès interdit pour le dossier de destination.");
+                }
+            }
+        } else {
+            if (folder.user_id !== userId) {
+                throw new Error("Seul le propriétaire peut déplacer un dossier vers la racine.");
+            }
+        }
+
+        await folder.update({ parent_id: destinationParentId });
+        return folder;
+    }
+
+    private async checkCircularMove(folderId: number, destinationId: number) {
+        let currentId: number | null = destinationId;
+
+        while (currentId !== null) {
+            if (currentId === folderId) {
+                throw new Error("Déplacement impossible : référence circulaire détectée.");
+            }
+            const parent: any = await Folder.findByPk(currentId);
+            if (!parent) break;
+            currentId = parent.parent_id;
+        }
+    }
+
     private async getRootContent(userId: number) {
         const contents = await this.fetchContents(null, userId);
         return {
