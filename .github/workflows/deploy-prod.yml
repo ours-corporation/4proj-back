@@ -3,7 +3,7 @@ name: CI/CD Production
 on:
   push:
     branches:
-      - test-runner
+      - main
   workflow_dispatch:
 
 jobs:
