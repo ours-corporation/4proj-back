@@ -34,7 +34,9 @@ app.use((req, res, next) => {
     next();
 });
 
-const supportedOrigins = process.env.APP_URL ? process.env.APP_URL : 'http://localhost:3000';
+const supportedOrigins = process.env.APP_URL
+    ? process.env.APP_URL.split(",")
+    : ["http://localhost:3000"];
 
 app.use(cors({
     origin: supportedOrigins,

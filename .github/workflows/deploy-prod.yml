@@ -8,7 +8,7 @@ on:
 
 jobs:
   ci:
-    name: Build & Lint
+    name: Executions des tests
     runs-on: vps
     steps:
       - name: En attente des tests
