@@ -1,7 +1,7 @@
 import fs from 'fs';
 import path from 'path';      
 import { v4 as uuidv4 } from 'uuid'; 
-import { User, File, Quota } from '../models';
+import { User, File, Folder, Quota } from '../models';
 import ShareService from './share';
 
 const UPLOAD_ROOT = '/app/uploads';
@@ -106,6 +106,41 @@ class FileService {
                 fullName: cleanNewName + originalExt
             });
         }
+        return file;
+    }
+
+    async moveFile(fileId: number, userId: number, destinationFolderId: number | null) {
+        const file = await File.findByPk(fileId);
+
+        if (!file) throw new Error("Fichier introuvable.");
+
+        if (file.trashed_at) throw new Error("Impossible de déplacer un fichier dans la corbeille.");
+
+        const access = await this.verifyFileAccessOrThrow(file, userId);
+        if (access !== 'OWNER' && access !== 'WRITE') {
+            throw new Error("Accès interdit pour ce fichier.");
+        }
+
+        if (destinationFolderId !== null) {
+            const destinationFolder = await Folder.findByPk(destinationFolderId);
+
+            if (!destinationFolder || destinationFolder.trashed_at) {
+                throw new Error("Dossier de destination introuvable.");
+            }
+
+            if (destinationFolder.user_id !== userId) {
+                const folderAccess = await ShareService.hasFolderAccess(userId, destinationFolderId);
+                if (!folderAccess || folderAccess === 'READ') {
+                    throw new Error("Accès interdit pour le dossier de destination.");
+                }
+            }
+        } else {
+            if (file.user_id !== userId) {
+                throw new Error("Seul le propriétaire peut déplacer un fichier vers la racine.");
+            }
+        }
+
+        await file.update({ folder_id: destinationFolderId });
         return file;
     }
 

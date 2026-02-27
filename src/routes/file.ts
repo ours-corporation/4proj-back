@@ -1,9 +1,9 @@
 import { Router } from 'express';
 import upload from '../middleware/upload';
-import { uploadFile, downloadFile, getRecentFiles, updateFile } from '../controllers/file';
+import { uploadFile, downloadFile, getRecentFiles, updateFile, moveFile } from '../controllers/file';
 import { uploadFiles } from '../controllers/file';
 import { requireAuth } from '../middleware/auth';
-import { fileIdSchema, recentFileSchema, updateFileSchema, uploadFilesSchema } from '../validator/file';
+import { fileIdSchema, recentFileSchema, updateFileSchema, uploadFilesSchema, moveFileSchema } from '../validator/file';
 import { validate } from '../middleware/validate';
 import { moveToTrash, restoreFromTrash, deletePermanently } from '../controllers/trash';
 import { trashIdSchema } from '../validator/trash';
@@ -148,6 +148,57 @@ filesRouter.get('/recent',requireAuth,validate(recentFileSchema),getRecentFiles)
  *         description: Fichier introuvable
  */
 filesRouter.get('/:id/download',requireAuth,validate(fileIdSchema),downloadFile);
+
+/**
+ * @swagger
+ * /files/{id}/move:
+ *   put:
+ *     tags:
+ *       - Files
+ *     summary: Déplacer un fichier vers un autre dossier
+ *     description: |
+ *       Déplace un fichier vers un dossier de destination ou vers la racine (folder_id: null).
+ *       Nécessite un accès OWNER ou WRITE sur le fichier.
+ *       Si la destination est un dossier, l'utilisateur doit aussi avoir un accès OWNER ou WRITE dessus.
+ *       Seul le propriétaire peut déplacer un fichier vers la racine.
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: ID du fichier à déplacer
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - folder_id
+ *             properties:
+ *               folder_id:
+ *                 type: integer
+ *                 nullable: true
+ *                 description: ID du dossier de destination (null pour la racine)
+ *                 example: 5
+ *     responses:
+ *       200:
+ *         description: Fichier déplacé avec succès
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/File'
+ *       400:
+ *         description: Le fichier est dans la corbeille
+ *       403:
+ *         description: Accès interdit (permissions insuffisantes)
+ *       404:
+ *         description: Fichier ou dossier de destination introuvable
+ */
+filesRouter.put('/:id/move',requireAuth,validate(moveFileSchema),moveFile);
 
 /**
  * @swagger

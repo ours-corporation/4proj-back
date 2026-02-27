@@ -87,6 +87,32 @@ export const updateFile = async (req: Request, res: Response) => {
     }
 };
 
+export const moveFile = async (req: Request, res: Response) => {
+    try {
+        const fileId = parseInt(req.params.id);
+        const { folder_id } = req.body;
+
+        // @ts-ignore
+        const userId = req.user.id;
+
+        const movedFile = await FileService.moveFile(fileId, userId, folder_id);
+
+        res.json(movedFile);
+    } catch (error: any) {
+        console.error(error);
+        if (error.message.includes("corbeille")) {
+            return res.status(400).json({ message: error.message });
+        }
+        if (error.message.includes("interdit") || error.message.includes("propriétaire")) {
+            return res.status(403).json({ message: error.message });
+        }
+        if (error.message.includes("introuvable")) {
+            return res.status(404).json({ message: error.message });
+        }
+        res.status(500).json({ message: "Erreur serveur" });
+    }
+};
+
 export const uploadFiles = async (req: Request, res: Response) => {
     try {
         const files = req.files as Express.Multer.File[];

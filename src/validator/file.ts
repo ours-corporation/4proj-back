@@ -27,6 +27,15 @@ export const updateFileSchema = z.object({
 
 export const uploadFilesSchema = z.object({
     body: z.object({
-        folder_id: z.coerce.number().int().positive().optional() 
+        folder_id: z.coerce.number().int().positive().optional()
+    })
+});
+
+export const moveFileSchema = z.object({
+    params: z.object({
+        id: z.coerce.number().int().positive("L'ID du fichier doit être un entier positif.")
+    }),
+    body: z.object({
+        folder_id: z.coerce.number().int().positive().nullable()
     })
 });
