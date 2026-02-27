@@ -31,3 +31,5 @@ dist/
 build/
 
 /src/generated/prisma
+
+package-lock.json
