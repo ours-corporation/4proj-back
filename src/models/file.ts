@@ -23,7 +23,7 @@ export class File extends Model {
     @Column(DataType.VIRTUAL)
     get fullName(): string {return this.extension ? `${this.name}.${this.extension}` : this.name;}
 
-    @Column({ type: DataType.BIGINT, allowNull: false })
+    @Column({ type: DataType.BIGINT, allowNull: false, defaultValue: 0 })
     size_bytes!: number;
 
     @Column({ type: DataType.STRING, allowNull: false })
