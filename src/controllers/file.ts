@@ -8,14 +8,17 @@ export const uploadFile = async (req: Request, res: Response) => {
         }
 
         // @ts-ignore
-        const userId = req.user.id; 
-        const parentId = req.body.parent_id ? parseInt(req.body.parent_id) : null;
+        const userId = req.user.id;
+        const folderId = req.body.folder_id ?? null;
 
-        const newFile = await FileService.uploadSingleFile(req.file, userId, parentId);
+        const newFile = await FileService.uploadSingleFile(req.file, userId, folderId);
 
         res.status(201).json(newFile);
     } catch (error: any) {
         console.error(error);
+        if (error.message.includes("quota")) {
+            return res.status(413).json({ message: error.message });
+        }
         res.status(500).json({ message: error.message });
     }
 };
@@ -39,7 +42,10 @@ export const downloadFile = async (req: Request, res: Response) => {
 
     } catch (error: any) {
         console.error(error);
-        if (error.message.includes("introuvable") || error.message.includes("interdit")) {
+        if (error.message.includes("interdit")) {
+            return res.status(403).json({ message: error.message });
+        }
+        if (error.message.includes("introuvable")) {
             return res.status(404).json({ message: error.message });
         }
         res.status(500).json({ message: "Erreur serveur." });
@@ -71,11 +77,13 @@ export const updateFile = async (req: Request, res: Response) => {
         res.json(updatedFile);
     } catch (error: any) {
         console.error(error);
-        if (error.message.includes("introuvable")) {
-            res.status(404).json({ message: error.message });
-        } else {
-            res.status(500).json({ message: "Erreur serveur" });
+        if (error.message.includes("interdit")) {
+            return res.status(403).json({ message: error.message });
         }
+        if (error.message.includes("introuvable")) {
+            return res.status(404).json({ message: error.message });
+        }
+        res.status(500).json({ message: "Erreur serveur" });
     }
 };
 
@@ -101,6 +109,9 @@ export const uploadFiles = async (req: Request, res: Response) => {
 
     } catch (error: any) {
         console.error("Erreur d'upload :", error);
+        if (error.message.includes("quota")) {
+            return res.status(413).json({ message: error.message });
+        }
         res.status(500).json({ message: error.message || "Erreur lors de l'upload." });
     }
 };

@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import multer from 'multer';
+import upload from '../middleware/upload';
 import { uploadFile, downloadFile, getRecentFiles, updateFile } from '../controllers/file';
 import { uploadFiles } from '../controllers/file';
 import { requireAuth } from '../middleware/auth';
@@ -9,7 +9,6 @@ import { moveToTrash, restoreFromTrash, deletePermanently } from '../controllers
 import { trashIdSchema } from '../validator/trash';
 
 const filesRouter = Router();
-const upload = multer({ storage: multer.memoryStorage() });
 
 /**
  * @swagger
@@ -37,9 +36,10 @@ const upload = multer({ storage: multer.memoryStorage() });
  *               file:
  *                 type: string
  *                 format: binary
- *               parent_id:
+ *               folder_id:
  *                 type: integer
  *                 nullable: true
+ *                 description: ID du dossier de destination (laisser vide pour la racine)
  *     responses:
  *       201:
  *         description: Fichier uploadé avec succès
@@ -48,7 +48,7 @@ const upload = multer({ storage: multer.memoryStorage() });
  *             schema:
  *               $ref: '#/components/schemas/File'
  *       400:
- *         description: Erreur validation
+ *         description: Aucun fichier envoyé ou données invalides
  *       413:
  *         description: Quota dépassé
  */
@@ -56,12 +56,12 @@ filesRouter.post('/upload',requireAuth,upload.single('file'), validate(uploadFil
 
 /**
  * @swagger
- * /files/{id}/upload:
+ * /files/uploads:
  *   post:
  *     tags:
  *       - Files
  *     summary: Uploader plusieurs fichiers simultanément
- *     description: Permet d'envoyer jusqu'à 50 fichiers d'un coup dans un dossier spécifique ou à la racine.
+ *     description: Permet d'envoyer jusqu'à 50 fichiers d'un coup dans un dossier spécifique ou à la racine. Limite de 500 Mo par envoi.
  *     security:
  *       - bearerAuth: []
  *     requestBody:
@@ -85,6 +85,8 @@ filesRouter.post('/upload',requireAuth,upload.single('file'), validate(uploadFil
  *         description: Fichiers uploadés avec succès
  *       400:
  *         description: Aucun fichier envoyé ou données invalides
+ *       413:
+ *         description: Quota dépassé ou poids total supérieur à 500 Mo
  */
 filesRouter.post('/uploads', requireAuth, upload.array('files', 50), validate(uploadFilesSchema) ,uploadFiles);
 
@@ -140,6 +142,8 @@ filesRouter.get('/recent',requireAuth,validate(recentFileSchema),getRecentFiles)
  *             schema:
  *               type: string
  *               format: binary
+ *       403:
+ *         description: Accès interdit
  *       404:
  *         description: Fichier introuvable
  */
@@ -266,6 +270,8 @@ filesRouter.delete('/:id',requireAuth,validate(trashIdSchema),deletePermanently)
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/File'
+ *       403:
+ *         description: Accès interdit (nécessite OWNER ou WRITE)
  *       404:
  *         description: Fichier introuvable
  */
