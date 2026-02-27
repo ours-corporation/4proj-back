@@ -7,9 +7,24 @@ import { fileIdSchema, recentFileSchema, updateFileSchema, uploadFilesSchema } f
 import { validate } from '../middleware/validate';
 import { moveToTrash, restoreFromTrash, deletePermanently } from '../controllers/trash';
 import { trashIdSchema } from '../validator/trash';
+import os from 'os';
 
 const filesRouter = Router();
-const upload = multer({ storage: multer.memoryStorage() });
+const storage = multer.diskStorage({
+    destination: os.tmpdir(),
+    filename: (req, file, cb) => {
+        const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+        cb(null, '4proj-tmp-' + uniqueSuffix);
+    }
+});
+
+const upload = multer({ 
+    storage,
+    limits: {
+        fileSize: 50 * 1024 * 1024 * 1024 // Limite de sécurité globale (50 Go)
+    }
+});
+
 
 /**
  * @swagger
