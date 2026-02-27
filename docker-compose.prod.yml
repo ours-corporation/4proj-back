@@ -1,5 +1,6 @@
 services:
   4proj-back:
+    container_name: 4proj-back
     build:
       context: .
       dockerfile: Dockerfile.prod
@@ -24,6 +25,7 @@ services:
       - 4proj-network
 
   4proj-db:
+    container_name: 4proj-db
     image: postgres:16
     env_file:
       - .env
