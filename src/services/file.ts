@@ -124,7 +124,7 @@ class FileService {
 
         const maxQuotaBytes = Number(user.quota.quota_bytes);
 
-        const currentUsage = await File.sum('size', { 
+        const currentUsage = await File.sum('size_bytes', { 
             where: { user_id: userId } 
         }) || 0;
 
@@ -151,7 +151,7 @@ class FileService {
             return await File.create({
                 name: file.originalname,
                 fullName: file.originalname,
-                size: file.size,
+                size_bytes: file.size,
                 mime_type: file.mimetype,
                 physical_key: physicalKey,
                 user_id: userId,
