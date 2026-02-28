@@ -12,8 +12,13 @@ const options: swaggerJsdoc.Options = {
         },
         servers: [
             {
-                url: 'http://localhost:3001/api', // Ajuste si nécessaire (ex: via process.env)
+                url: 'http://localhost:3001/api',
+                description: 'Serveur de développement local',
             },
+            {
+                url: 'https://api.supfile.dev-lecomte.fr/api',
+                description: 'Serveur de production',
+            }
         ],
         components: {
             securitySchemes: {
@@ -237,9 +242,12 @@ const options: swaggerJsdoc.Options = {
         ],
     },
     // Indique où chercher les commentaires @swagger
-    apis: ['./src/routes/*.ts'], 
+    apis: [
+        process.env.NODE_ENV === 'production'
+            ? './dist/routes/*.js'
+            : './src/routes/*.ts'
+    ],
 };
-
 
 const swaggerSpec = swaggerJsdoc(options);
 
