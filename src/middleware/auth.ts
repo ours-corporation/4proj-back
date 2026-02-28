@@ -7,7 +7,7 @@ export const requireAuth = (req: Request, res: Response, next: NextFunction) => 
         if (!header) return res.status(401).json({ error: 'Unauthorized' });
         const token = header.split(' ')[1];
         const payload = verifyAccessToken(token) as any;
-        (req as any).user = { id: payload.id, email: payload.email };
+        req.user = { id: payload.id, email: payload.email };
         return next();
     } catch (err) {
         return res.status(401).json({ error: 'Invalid or expired token' });

@@ -8,7 +8,6 @@ export const uploadFile = async (req: Request, res: Response) => {
             return res.status(400).json({ message: "Aucun fichier envoyé" });
         }
 
-        // @ts-ignore
         const userId = req.user.id;
         const folderId = req.body.folder_id ?? null;
 
@@ -27,7 +26,6 @@ export const uploadFile = async (req: Request, res: Response) => {
 export const downloadFile = async (req: Request, res: Response) => {
     try {
         const fileId = parseInt(req.params.id);
-        // @ts-ignore
         const userId = req.user.id;
 
         const fileData = await FileService.getFileForDownload(fileId, userId);
@@ -55,10 +53,7 @@ export const downloadFile = async (req: Request, res: Response) => {
 
 export const getRecentFiles = async (req: Request, res: Response) => {
     try {
-        // @ts-ignore
-        const limit = req.query.limit as number; 
-        
-        // @ts-ignore
+        const limit = req.query.limit as unknown as number;
         const files = await FileService.getRecentFiles(req.user.id, limit);
         res.json(files);
     } catch (error: any) {
@@ -70,11 +65,10 @@ export const getRecentFiles = async (req: Request, res: Response) => {
 export const updateFile = async (req: Request, res: Response) => {
     try {
         const id = parseInt(req.params.id);
-        const { name } = req.body; // On extrait les champs modifiables
+        const { name } = req.body;
 
-        // @ts-ignore
         const updatedFile = await FileService.updateFile(id, req.user.id, { name });
-        
+
         res.json(updatedFile);
     } catch (error: any) {
         console.error(error);
@@ -92,8 +86,6 @@ export const moveFile = async (req: Request, res: Response) => {
     try {
         const fileId = parseInt(req.params.id);
         const { folder_id } = req.body;
-
-        // @ts-ignore
         const userId = req.user.id;
 
         const movedFile = await FileService.moveFile(fileId, userId, folder_id);
@@ -117,11 +109,8 @@ export const moveFile = async (req: Request, res: Response) => {
 export const uploadFiles = async (req: Request, res: Response) => {
     try {
         const files = req.files as Express.Multer.File[];
-        
         const folderId = req.body.folder_id ? parseInt(req.body.folder_id) : null;
-        
-        // @ts-ignore
-        const userId = req.user.id; 
+        const userId = req.user.id;
 
         if (!files || files.length === 0) {
             return res.status(400).json({ message: "Aucun fichier fourni." });
@@ -146,8 +135,6 @@ export const uploadFiles = async (req: Request, res: Response) => {
 export const copyFile = async (req: Request, res: Response) => {
     try {
         const fileId = parseInt(req.params.id);
-
-        // @ts-ignore
         const userId = req.user.id;
 
         const copiedFile = await FileService.copyFile(fileId, userId);
@@ -175,8 +162,6 @@ export const getThumbnail = async (req: Request, res: Response) => {
     try {
         const fileId = parseInt(req.params.id);
         const size = (req.query.size as 'small' | 'medium') || 'medium';
-
-        // @ts-ignore
         const userId = req.user.id;
 
         const thumbData = await FileService.getThumbnail(fileId, userId, size);
@@ -201,8 +186,6 @@ export const getThumbnail = async (req: Request, res: Response) => {
 export const streamFile = async (req: Request, res: Response) => {
     try {
         const fileId = parseInt(req.params.id);
-
-        // @ts-ignore
         const userId = req.user.id;
 
         const fileData = await FileService.getFileForStream(fileId, userId);
@@ -257,8 +240,6 @@ export const streamFile = async (req: Request, res: Response) => {
 export const moveMultipleItems = async (req: Request, res: Response) => {
     try {
         const { items, destination_folder_id } = req.body;
-
-        // @ts-ignore
         const userId = req.user.id;
 
         const result = await FileService.moveMultipleItems(items, userId, destination_folder_id);
