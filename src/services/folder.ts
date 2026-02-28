@@ -124,6 +124,20 @@ class FolderService {
         return folder;
     }
 
+    async renameFolder(folderId: number, userId: number, name: string) {
+        const folder = await this.findFolderOrThrow(folderId);
+
+        if (folder.trashed_at) throw new Error("Impossible de renommer un dossier dans la corbeille.");
+
+        const access = await this.verifyAccessOrThrow(folder, userId);
+        if (access !== 'OWNER') {
+            throw new Error("Seul le propriétaire peut renommer un dossier.");
+        }
+
+        await folder.update({ name });
+        return folder;
+    }
+
     async copyFolder(folderId: number, userId: number) {
         const folder = await this.findFolderOrThrow(folderId);
 

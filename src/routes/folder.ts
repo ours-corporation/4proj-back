@@ -1,8 +1,8 @@
 import { Router } from 'express';
-import { createFolder, getFolder, copyFolder, downloadFolder } from '../controllers/folder';
+import { createFolder, getFolder, renameFolder, copyFolder, downloadFolder } from '../controllers/folder';
 import { requireAuth } from '../middleware/auth';
 import { validate } from '../middleware/validate';
-import { createFolderSchema, getFolderSchema, copyFolderSchema } from '../validator/folder';
+import { createFolderSchema, getFolderSchema, copyFolderSchema, renameFolderSchema } from '../validator/folder';
 import { moveToTrash, restoreFromTrash, deletePermanently } from '../controllers/trash';
 import { trashIdSchema } from '../validator/trash';
 
@@ -126,6 +126,54 @@ folderRouter.get('/', requireAuth, getFolder);
  *         description: Dossier introuvable
  */
 folderRouter.get('/:id',requireAuth,validate(getFolderSchema),getFolder);
+
+/**
+ * @swagger
+ * /folders/{id}:
+ *   put:
+ *     tags:
+ *       - Folders
+ *     summary: Renommer un dossier
+ *     description: |
+ *       Renomme un dossier existant.
+ *       Nécessite d'être le propriétaire du dossier (accès OWNER).
+ *       Impossible de renommer un dossier dans la corbeille.
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: ID du dossier à renommer
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - name
+ *             properties:
+ *               name:
+ *                 type: string
+ *                 example: "Nouveau nom"
+ *     responses:
+ *       200:
+ *         description: Dossier renommé avec succès
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Folder'
+ *       400:
+ *         description: Dossier dans la corbeille
+ *       403:
+ *         description: Accès interdit (propriétaire requis)
+ *       404:
+ *         description: Dossier introuvable
+ */
+folderRouter.put('/:id',requireAuth,validate(renameFolderSchema),renameFolder);
 
 /**
  * @swagger
