@@ -31,6 +31,16 @@ vi.mock('../src/services/share', () => ({
     }
 }));
 
+vi.mock('../src/services/thumbnail', () => ({
+    default: {
+        isImage: vi.fn(() => false),
+        getSmallThumbnailBase64: vi.fn(() => null),
+        generateThumbnails: vi.fn().mockResolvedValue(undefined),
+        copyThumbnails: vi.fn().mockResolvedValue(undefined),
+        deleteThumbnails: vi.fn().mockResolvedValue(undefined)
+    }
+}));
+
 vi.mock('fs', () => {
     const mockFs = {
         existsSync: vi.fn(),
