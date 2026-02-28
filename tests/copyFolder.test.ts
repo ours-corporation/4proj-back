@@ -31,13 +31,28 @@ vi.mock('../src/services/share', () => ({
     }
 }));
 
+vi.mock('../src/services/thumbnail', () => ({
+    default: {
+        isImage: vi.fn(() => false),
+        getSmallThumbnailBase64: vi.fn(() => null),
+        generateThumbnails: vi.fn().mockResolvedValue(undefined),
+        copyThumbnails: vi.fn().mockResolvedValue(undefined),
+        deleteThumbnails: vi.fn().mockResolvedValue(undefined)
+    }
+}));
+
 vi.mock('fs', () => {
     const mockFs = {
         existsSync: vi.fn(() => true),
         mkdirSync: vi.fn(),
         renameSync: vi.fn(),
         unlinkSync: vi.fn(),
-        copyFileSync: vi.fn()
+        copyFileSync: vi.fn(),
+        promises: {
+            mkdir: vi.fn().mockResolvedValue(undefined),
+            copyFile: vi.fn().mockResolvedValue(undefined),
+            unlink: vi.fn().mockResolvedValue(undefined)
+        }
     };
     return { default: mockFs, ...mockFs };
 });
