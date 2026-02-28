@@ -91,14 +91,8 @@ class FileService {
         }
 
         if (updates.name) {
-            const originalExt = path.extname(file.fullName)
-
             const cleanNewName = path.basename(updates.name, path.extname(updates.name));
-            
-            await file.update({ 
-                name: cleanNewName,
-                fullName: cleanNewName + originalExt
-            });
+            await file.update({ name: cleanNewName });
         }
         return file;
     }
@@ -149,7 +143,8 @@ class FileService {
         }
 
         const targetPath = path.join(userDir, newPhysicalKey);
-        fs.copyFileSync(sourcePath, targetPath);
+        await fs.promises.mkdir(userDir, { recursive: true });
+        await fs.promises.copyFile(sourcePath, targetPath);
 
         await ThumbnailService.copyThumbnails(file.physical_key, file.user_id, newPhysicalKey, userId);
 
@@ -260,20 +255,24 @@ class FileService {
     
     private async processAndSaveFiles(files: Express.Multer.File[], userId: number, folderId: number | null) {
         const userDir = path.join(UPLOAD_ROOT, userId.toString());
-        if (!fs.existsSync(userDir)) {
-            fs.mkdirSync(userDir, { recursive: true });
-        }
+        await fs.promises.mkdir(userDir, { recursive: true });
 
         return await Promise.all(files.map(async (file) => {
             const physicalKey = uuidv4();
             const targetPath = path.join(userDir, physicalKey);
 
-            fs.copyFileSync(file.path, targetPath);
-            fs.unlinkSync(file.path);
+            await fs.promises.copyFile(file.path, targetPath);
+            await fs.promises.unlink(file.path);
+
+            const rawExt = path.extname(file.originalname);
+            const baseName = rawExt
+                ? path.basename(file.originalname, rawExt)
+                : file.originalname;
+            const extension = rawExt ? rawExt.slice(1) : null;
 
             const newFile = await File.create({
-                name: file.originalname,
-                fullName: file.originalname,
+                name: baseName,
+                extension,
                 size_bytes: file.size,
                 mime_type: file.mimetype,
                 physical_key: physicalKey,

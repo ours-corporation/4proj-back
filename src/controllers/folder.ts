@@ -6,7 +6,6 @@ export const createFolder = async (req: Request, res: Response) => {
     try {
         
         const { name, parent_id } = req.body;
-        // @ts-ignore
         const userId = req.user.id;
 
         const newFolder = await FolderService.createFolder(name, userId, parent_id);
@@ -29,7 +28,6 @@ export const createFolder = async (req: Request, res: Response) => {
 export const getFolder = async (req: Request, res: Response) => {
     try {
         const folderId = req.params.id ? parseInt(req.params.id) : null;
-        // @ts-ignore
         const userId = req.user.id;
 
         const content = await FolderService.getFolderContent(folderId, userId);
@@ -48,7 +46,6 @@ export const getFolder = async (req: Request, res: Response) => {
 export const renameFolder = async (req: Request, res: Response) => {
     try {
         const folderId = parseInt(req.params.id);
-        // @ts-ignore
         const userId = req.user.id;
         const { name } = req.body;
 
@@ -69,7 +66,6 @@ export const renameFolder = async (req: Request, res: Response) => {
 export const copyFolder = async (req: Request, res: Response) => {
     try {
         const folderId = parseInt(req.params.id);
-        // @ts-ignore
         const userId = req.user.id;
 
         const copiedFolder = await FolderService.copyFolder(folderId, userId);
@@ -96,7 +92,6 @@ export const copyFolder = async (req: Request, res: Response) => {
 export const downloadFolder = async (req: Request, res: Response) => {
     try {
         const folderId = parseInt(req.params.id);
-        // @ts-ignore
         const userId = req.user.id;
 
         const folder = await Folder.findByPk(folderId);
