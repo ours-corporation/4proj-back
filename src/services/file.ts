@@ -249,7 +249,7 @@ class FileService {
 
         const maxQuotaBytes = Number(user.quota.quota_bytes);
 
-        const currentUsage = await File.sum('size', { 
+        const currentUsage = await File.sum('size_bytes', { 
             where: { user_id: userId } 
         }) || 0;
 
@@ -268,12 +268,13 @@ class FileService {
             const physicalKey = uuidv4();
             const targetPath = path.join(userDir, physicalKey);
 
-            fs.renameSync(file.path, targetPath);
+            fs.copyFileSync(file.path, targetPath);
+            fs.unlinkSync(file.path);
 
             const newFile = await File.create({
                 name: file.originalname,
                 fullName: file.originalname,
-                size: file.size,
+                size_bytes: file.size,
                 mime_type: file.mimetype,
                 physical_key: physicalKey,
                 user_id: userId,

@@ -35,8 +35,12 @@ app.use((req, res, next) => {
     next();
 });
 
+const supportedOrigins = process.env.APP_URL
+    ? process.env.APP_URL.split(",")
+    : ["http://localhost:3000"];
+
 app.use(cors({
-    origin: "http://localhost:3000",
+    origin: supportedOrigins,
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
     allowedHeaders: ["Content-Type", "Authorization"],
     credentials: true,

@@ -32,5 +32,7 @@ build/
 
 /src/generated/prisma
 
+package-lock.json
+
 # Claude Code
 .claude/

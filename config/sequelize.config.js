@@ -1,6 +1,3 @@
-require('ts-node/register'); // permet à CLI de lire les fichiers TS
-require('dotenv').config();
-
 module.exports = {
     development: {
         username: process.env.DB_USER || "postgres",
