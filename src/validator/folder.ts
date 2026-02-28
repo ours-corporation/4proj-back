@@ -27,3 +27,16 @@ export const getFolderSchema = z.object({
         id: z.string().regex(/^\d+$/, "L'ID du dossier doit être un nombre valide")
     })
 });
+
+// Schéma pour le RENOMMAGE d'un dossier (PUT /:id)
+export const renameFolderSchema = z.object({
+    params: z.object({
+        id: z.string().regex(/^\d+$/, "L'ID du dossier doit être un nombre valide")
+    }),
+    body: z.object({
+        name: z.string({ message: "Le nom est obligatoire" })
+               .min(1, "Le nom ne peut pas être vide")
+               .max(255, "Le nom est trop long")
+               .regex(/^[^<>:"/\\|?*]+$/, "Le nom contient des caractères interdits")
+    })
+});
