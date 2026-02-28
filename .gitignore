@@ -31,3 +31,6 @@ dist/
 build/
 
 /src/generated/prisma
+
+# Claude Code
+.claude/
