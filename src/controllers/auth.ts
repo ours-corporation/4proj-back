@@ -39,7 +39,6 @@ export const login = async (req: Request, res: Response) => {
 
 export const refresh = async (req: Request, res: Response) => {
     try {
-        // support body or cookie
         const refreshToken = req.body.refreshToken || req.cookies?.refreshToken;
 
         if (!refreshToken) return res.status(400).json({ error: 'No refresh token provided' });
@@ -109,7 +108,6 @@ export const register = async (req: Request, res: Response) => {
     try {
         const { username, email, password } = req.body;
 
-        //todo : trouver un moyen d'avoir de vraies faux usernames
         let newUsername: string;
         if(username == null || username == "") {
             newUsername = 'user' + Math.floor(Math.random() * 1000000);
@@ -190,7 +188,6 @@ export const authWithGoogle = async (req: Request, res: Response) => {
 
         if (user) {
             if (user.google_id === google_id) {
-                // reconnexion OK
             } else if (!user.google_id) {
                 return res.status(409).json({
                     error: "Un compte avec cet email existe déjà sans Google.",
@@ -274,13 +271,10 @@ export const authWithGithub = async (req: Request, res: Response) => {
         }
         const email = primaryEmailObj.email;
 
-
-
         let user = await User.findOne({ where: { email } });
 
         if (user) {
             if (user.github_id == github_id) {
-                // reconnexion OK
             } else if (!user.github_id) {
                 return res.status(409).json({
                     error: "Un compte avec cet email existe déjà sans Github.",

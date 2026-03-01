@@ -26,14 +26,6 @@ const apiRouter = express.Router();
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-app.use((req, res, next) => {
-    if (req.path.includes('/login') || req.path.includes('/auth')) {
-        console.log(`[DEBUG] Requête reçue sur ${req.path}`);
-        console.log('[DEBUG] Headers Content-Type:', req.headers['content-type']);
-        console.log('[DEBUG] Body:', req.body);
-    }
-    next();
-});
 
 const supportedOrigins = process.env.APP_URL
     ? process.env.APP_URL.split(",")
