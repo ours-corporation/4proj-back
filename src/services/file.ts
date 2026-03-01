@@ -137,12 +137,8 @@ class FileService {
         const sourcePath = path.join(UPLOAD_ROOT, file.user_id.toString(), file.physical_key);
         const newPhysicalKey = uuidv4();
         const userDir = path.join(UPLOAD_ROOT, userId.toString());
-
-        if (!fs.existsSync(userDir)) {
-            fs.mkdirSync(userDir, { recursive: true });
-        }
-
         const targetPath = path.join(userDir, newPhysicalKey);
+
         await fs.promises.mkdir(userDir, { recursive: true });
         await fs.promises.copyFile(sourcePath, targetPath);
 
