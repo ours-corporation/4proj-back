@@ -9,7 +9,6 @@ export const createPublicShare = async (req: Request, res: Response) => {
             ? { type: 'file' as const, id: req.body.fileId }
             : { type: 'folder' as const, id: req.body.folderId };
 
-        // @ts-ignore
         const ownerId = req.user.id;
 
         const result = await ShareService.createPublicLink(ownerId, target, {
@@ -31,7 +30,6 @@ export const createPrivateShare = async (req: Request, res: Response) => {
             ? { type: 'file' as const, id: req.body.fileId }
             : { type: 'folder' as const, id: req.body.folderId };
 
-        // @ts-ignore
         const ownerId = req.user.id;
 
         const share = await ShareService.createPrivateShare(
@@ -72,7 +70,6 @@ export const accessPublicShare = async (req: Request, res: Response) => {
 //GET /shares/received
 export const getReceivedShares = async (req: Request, res: Response) => {
     try {
-        // @ts-ignore
         const shares = await ShareService.getSharedWithMe(req.user.id);
         res.json(shares);
     } catch (error: any) {
@@ -85,7 +82,6 @@ export const getReceivedShares = async (req: Request, res: Response) => {
 export const revokeShare = async (req: Request, res: Response) => {
     try {
         const shareId = parseInt(req.params.id);
-        // @ts-ignore
         const ownerId = req.user.id;
 
         await ShareService.revokeShare(ownerId, shareId);

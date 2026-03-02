@@ -6,7 +6,6 @@ export const createFolder = async (req: Request, res: Response) => {
     try {
         
         const { name, parent_id } = req.body;
-        // @ts-ignore
         const userId = req.user.id;
 
         const newFolder = await FolderService.createFolder(name, userId, parent_id);
@@ -29,7 +28,6 @@ export const createFolder = async (req: Request, res: Response) => {
 export const getFolder = async (req: Request, res: Response) => {
     try {
         const folderId = req.params.id ? parseInt(req.params.id) : null;
-        // @ts-ignore
         const userId = req.user.id;
 
         const content = await FolderService.getFolderContent(folderId, userId);
@@ -45,10 +43,55 @@ export const getFolder = async (req: Request, res: Response) => {
     }
 };
 
+export const renameFolder = async (req: Request, res: Response) => {
+    try {
+        const folderId = parseInt(req.params.id);
+        const userId = req.user.id;
+        const { name } = req.body;
+
+        const folder = await FolderService.renameFolder(folderId, userId, name);
+
+        res.json(folder);
+    } catch (error: any) {
+        console.error(error);
+        if (error.message.includes("introuvable")) return res.status(404).json({ message: error.message });
+        if (error.message.includes("corbeille")) return res.status(400).json({ message: error.message });
+        if (error.message.includes("interdit") || error.message.includes("propriétaire")) {
+            return res.status(403).json({ message: error.message });
+        }
+        res.status(500).json({ message: "Erreur serveur lors du renommage du dossier." });
+    }
+};
+
+export const copyFolder = async (req: Request, res: Response) => {
+    try {
+        const folderId = parseInt(req.params.id);
+        const userId = req.user.id;
+
+        const copiedFolder = await FolderService.copyFolder(folderId, userId);
+
+        res.status(201).json(copiedFolder);
+    } catch (error: any) {
+        console.error(error);
+        if (error.message.includes("corbeille")) {
+            return res.status(400).json({ message: error.message });
+        }
+        if (error.message.includes("interdit")) {
+            return res.status(403).json({ message: error.message });
+        }
+        if (error.message.includes("introuvable")) {
+            return res.status(404).json({ message: error.message });
+        }
+        if (error.message.includes("quota")) {
+            return res.status(413).json({ message: error.message });
+        }
+        res.status(500).json({ message: "Erreur serveur" });
+    }
+};
+
 export const downloadFolder = async (req: Request, res: Response) => {
     try {
         const folderId = parseInt(req.params.id);
-        // @ts-ignore
         const userId = req.user.id;
 
         const folder = await Folder.findByPk(folderId);

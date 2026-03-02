@@ -3,26 +3,47 @@ import fs from 'fs';
 import path from 'path';
 import FileService from '../src/services/file';
 import ShareService from '../src/services/share';
-import { File } from '../src/models';
+import { File, User, Quota } from '../src/models';
 
 vi.mock('../src/models', () => ({
     File: { 
         create: vi.fn(), 
-        findByPk: vi.fn() 
+        findByPk: vi.fn(),
+        sum: vi.fn()
     },
     Share: { 
         findOne: vi.fn() 
-    }
+    },
+    User: {
+        findByPk: vi.fn()
+    },
+    Quota: {}
 }));
 
+vi.mock('../src/services/thumbnail', () => ({
+    default: {
+        isImage: vi.fn(() => false),
+        getSmallThumbnailBase64: vi.fn(() => null),
+        generateThumbnails: vi.fn().mockResolvedValue(undefined),
+        copyThumbnails: vi.fn().mockResolvedValue(undefined),
+        deleteThumbnails: vi.fn().mockResolvedValue(undefined)
+    }
+}));
 
 vi.mock('fs', () => {
     const mockFs = {
         existsSync: vi.fn(),
         mkdirSync: vi.fn(),
-        writeFileSync: vi.fn()
+        writeFileSync: vi.fn(),
+        renameSync: vi.fn(),
+        unlinkSync: vi.fn(),
+        promises: {
+            mkdir: vi.fn().mockResolvedValue(undefined),
+            copyFile: vi.fn().mockResolvedValue(undefined),
+            unlink: vi.fn().mockResolvedValue(undefined)
+        }
     };
-    
+
     return {
         default: mockFs,
         ...mockFs
@@ -48,10 +69,19 @@ describe('FileService', () => {
     describe('uploadMultipleFiles', () => {
         const userId = 42;
         const folderId = 10;
+        
         const mockFiles: any[] = [
-            { originalname: 'vacances.jpg', size: 1024, mimetype: 'image/jpeg', buffer: Buffer.from('fake data') },
-            { originalname: 'facture.pdf', size: 2048, mimetype: 'application/pdf', buffer: Buffer.from('fake data 2') }
+            { originalname: 'vacances.jpg', size: 1024, mimetype: 'image/jpeg', path: '/tmp/fake-file-1' },
+            { originalname: 'facture.pdf', size: 2048, mimetype: 'application/pdf', path: '/tmp/fake-file-2' }
         ];
+
+        beforeEach(() => {
+            (User.findByPk as any).mockResolvedValue({
+                id: userId,
+                quota: { quota_bytes: 30 * 1024 * 1024 * 1024 }
+            });
+            (File.sum as any).mockResolvedValue(0);
+        });
 
         it('devrait jeter une erreur si aucun fichier n\'est fourni', async () => {
             await expect(FileService.uploadMultipleFiles([], userId, folderId))
@@ -62,40 +92,39 @@ describe('FileService', () => {
         });
 
         it('devrait créer le dossier utilisateur s\'il n\'existe pas', async () => {
-            (fs.existsSync as any).mockReturnValue(false);
             (File.create as any).mockResolvedValue({ id: 1 });
 
             await FileService.uploadMultipleFiles([mockFiles[0]], userId, null);
 
-            expect(fs.mkdirSync).toHaveBeenCalledWith(
-                path.join('/app/uploads', userId.toString()), 
+            expect((fs as any).promises.mkdir).toHaveBeenCalledWith(
+                path.join('/app/uploads', userId.toString()),
                 { recursive: true }
             );
         });
 
         it('devrait uploader plusieurs fichiers et les enregistrer en base', async () => {
-            (fs.existsSync as any).mockReturnValue(true);
-
             (File.create as any).mockImplementation((data: any) => Promise.resolve({ id: Math.random(), ...data }));
 
             const results = await FileService.uploadMultipleFiles(mockFiles, userId, folderId);
 
             expect(results).toHaveLength(2);
 
-            expect(fs.writeFileSync).toHaveBeenCalledWith(
-                path.join('/app/uploads', userId.toString(), 'fake-uuid-1234-5678'), 
-                mockFiles[0].buffer
+            expect((fs as any).promises.copyFile).toHaveBeenCalledWith(
+                '/tmp/fake-file-1',
+                path.join('/app/uploads', userId.toString(), 'fake-uuid-1234-5678')
             );
-            
+
             expect(File.create).toHaveBeenCalledWith(expect.objectContaining({
-                name: 'vacances.jpg',
+                name: 'vacances',
+                extension: 'jpg',
                 mime_type: 'image/jpeg',
                 physical_key: 'fake-uuid-1234-5678',
                 user_id: 42,
                 folder_id: 10
             }));
 
-            expect(fs.writeFileSync).toHaveBeenCalledTimes(2);
+            expect((fs as any).promises.copyFile).toHaveBeenCalledTimes(2);
+            expect((fs as any).promises.unlink).toHaveBeenCalledTimes(2);
             expect(File.create).toHaveBeenCalledTimes(2);
         });
     });

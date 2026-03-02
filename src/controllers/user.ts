@@ -6,7 +6,7 @@ export const getMe = async (req: Request, res: Response) => {
     try {
         const includeQuota = req.query.quota === 'true';
 
-        const userId = (req as any).user.id;
+        const userId = req.user.id;
         const user = await User.scope('withoutPassword').findByPk(userId);
 
         if (!user) {
@@ -26,7 +26,7 @@ export const getMe = async (req: Request, res: Response) => {
 
 export const updateMe = async (req: Request, res: Response) => {
     try {
-        const userId = (req as any).user.id;
+        const userId = req.user.id;
         const { email, username } = req.body;
 
         const actualEmail = (await User.findByPk(userId))?.email;
@@ -57,7 +57,7 @@ export const updateMe = async (req: Request, res: Response) => {
 
 export const deleteMe = async (req: Request, res: Response) => {
     try {
-        const userId = (req as any).user.id;
+        const userId = req.user.id;
 
         const user = await User.findByPk(userId);
         if (!user) {
@@ -74,7 +74,7 @@ export const deleteMe = async (req: Request, res: Response) => {
 
 export const updatePassword = async (req: Request, res: Response) => {
     try {
-        const userId = (req as any).user.id;
+        const userId = req.user.id;
         const { lastPassword, NewPassword } = req.body;
 
         const user = await User.findByPk(userId);

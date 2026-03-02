@@ -9,6 +9,13 @@ vi.mock('../src/models', () => ({
     Share: { findOne: vi.fn() }
 }));
 
+vi.mock('../src/services/thumbnail', () => ({
+    default: {
+        isImage: vi.fn(() => false),
+        getSmallThumbnailBase64: vi.fn(() => null)
+    }
+}));
+
 describe('FolderService - getFolderContent (Refactor & Breadcrumbs)', () => {
 
     afterEach(() => {
@@ -18,7 +25,8 @@ describe('FolderService - getFolderContent (Refactor & Breadcrumbs)', () => {
 
     it('devrait retourner le contenu de la racine pour le propriétaire', async () => {
         (Folder.findAll as any).mockResolvedValue([{ id: 1, name: 'Dossier 1' }]);
-        (File.findAll as any).mockResolvedValue([{ id: 10, name: 'Fichier 1' }]);
+        const mockFile = { id: 10, name: 'Fichier 1', mime_type: 'text/plain', physical_key: 'key1', user_id: 42, toJSON: () => ({ id: 10, name: 'Fichier 1' }) };
+        (File.findAll as any).mockResolvedValue([mockFile]);
 
         const result = await FolderService.getFolderContent(null, 42);
 

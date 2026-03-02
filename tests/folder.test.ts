@@ -19,6 +19,16 @@ vi.mock('../src/models', () => {
     };
 });
 
+vi.mock('../src/services/thumbnail', () => ({
+    default: {
+        isImage: vi.fn(() => false),
+        getSmallThumbnailBase64: vi.fn(() => null),
+        generateThumbnails: vi.fn().mockResolvedValue(undefined),
+        copyThumbnails: vi.fn().mockResolvedValue(undefined),
+        deleteThumbnails: vi.fn().mockResolvedValue(undefined)
+    }
+}));
+
 
 
 describe('FolderService - Create Folder', () => {
