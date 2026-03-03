@@ -19,7 +19,7 @@ services:
       - 4proj-db
     restart: unless-stopped
     volumes:
-      - ./volumes/user_uploads:/app/uploads
+      - user_uploads:/app/uploads
     networks:
       - 4proj-backend-network
       - 4proj-network
@@ -34,7 +34,7 @@ services:
       POSTGRES_PASSWORD: ${DB_PASSWORD:-password}
       POSTGRES_DB: ${DB_NAME:-mydatabase}
     volumes:
-      - ./volumes/pgdata:/var/lib/postgresql/data
+      - pgdata:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
       interval: 10s
