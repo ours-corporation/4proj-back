@@ -50,3 +50,7 @@ networks:
     external: true
   4proj-backend-network:
     driver: bridge
+
+volumes:
+  pgdata:
+  user_uploads:
