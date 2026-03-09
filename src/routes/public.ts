@@ -62,7 +62,7 @@ const publicRouter = Router();
  *       410:
  *         description: Lien expiré
  */
-publicRouter.get('/access/:token',validate(accessPublicShareSchema),accessPublicShare);
+publicRouter.post('/access/:token',validate(accessPublicShareSchema),accessPublicShare);
 
 /**
  * @swagger
@@ -99,6 +99,6 @@ publicRouter.get('/access/:token',validate(accessPublicShareSchema),accessPublic
  *       404:
  *         description: Lien invalide ou expiré
  */
-publicRouter.get('/download/:token',validate(accessPublicShareSchema),downloadPublicFolder);
+publicRouter.post('/download/:token',validate(accessPublicShareSchema),downloadPublicFolder);
 
 export default publicRouter;
