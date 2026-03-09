@@ -16,7 +16,7 @@ const publicRouter = Router();
 /**
  * @swagger
  * /public/access/{token}:
- *   post:
+ *   get:
  *     tags:
  *       - Public
  *     summary: Accéder à un contenu via lien public
@@ -62,12 +62,12 @@ const publicRouter = Router();
  *       410:
  *         description: Lien expiré
  */
-publicRouter.post('/access/:token',validate(accessPublicShareSchema),accessPublicShare);
+publicRouter.get('/access/:token',validate(accessPublicShareSchema),accessPublicShare);
 
 /**
  * @swagger
  * /public/download/{token}:
- *   post:
+ *   get:
  *     tags:
  *       - Public
  *     summary: Télécharger un dossier public en ZIP
@@ -99,6 +99,6 @@ publicRouter.post('/access/:token',validate(accessPublicShareSchema),accessPubli
  *       404:
  *         description: Lien invalide ou expiré
  */
-publicRouter.post('/download/:token',validate(accessPublicShareSchema),downloadPublicFolder);
+publicRouter.get('/download/:token',validate(accessPublicShareSchema),downloadPublicFolder);
 
 export default publicRouter;
