@@ -67,7 +67,7 @@ publicRouter.post('/access/:token',validate(accessPublicShareSchema),accessPubli
 /**
  * @swagger
  * /public/download/{token}:
- *   get:
+ *   post:
  *     tags:
  *       - Public
  *     summary: Télécharger un dossier public en ZIP
@@ -99,6 +99,6 @@ publicRouter.post('/access/:token',validate(accessPublicShareSchema),accessPubli
  *       404:
  *         description: Lien invalide ou expiré
  */
-publicRouter.get('/download/:token',validate(accessPublicShareSchema),downloadPublicFolder);
+publicRouter.post('/download/:token',validate(accessPublicShareSchema),downloadPublicFolder);
 
 export default publicRouter;
