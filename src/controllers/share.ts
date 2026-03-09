@@ -93,6 +93,60 @@ export const revokeShare = async (req: Request, res: Response) => {
     }
 };
 
+// GET /shares/sent
+export const getMyShares = async (req: Request, res: Response) => {
+    try {
+        const shares = await ShareService.getMyShares(req.user.id);
+        res.json(shares);
+    } catch (error: any) {
+        console.error(error);
+        res.status(500).json({ message: "Erreur serveur" });
+    }
+};
+
+// GET /files/:id/shares
+export const getFileShares = async (req: Request, res: Response) => {
+    try {
+        const fileId = parseInt(req.params.id);
+        const shares = await ShareService.getItemShares(req.user.id, { type: 'file', id: fileId });
+        res.json(shares);
+    } catch (error: any) {
+        const status = error.message.includes('introuvable') || error.message.includes('droits') ? 404 : 400;
+        res.status(status).json({ message: error.message });
+    }
+};
+
+// GET /folders/:id/shares
+export const getFolderShares = async (req: Request, res: Response) => {
+    try {
+        const folderId = parseInt(req.params.id);
+        const shares = await ShareService.getItemShares(req.user.id, { type: 'folder', id: folderId });
+        res.json(shares);
+    } catch (error: any) {
+        const status = error.message.includes('introuvable') || error.message.includes('droits') ? 404 : 400;
+        res.status(status).json({ message: error.message });
+    }
+};
+
+// PUT /shares/:id
+export const updateShare = async (req: Request, res: Response) => {
+    try {
+        const shareId = parseInt(req.params.id);
+        const ownerId = req.user.id;
+
+        const share = await ShareService.updateShare(ownerId, shareId, {
+            permission: req.body.permission,
+            password: req.body.password,
+            expiresAt: req.body.expiresAt
+        });
+
+        res.json(share);
+    } catch (error: any) {
+        const status = error.message.includes('introuvable') ? 404 : 400;
+        res.status(status).json({ message: error.message });
+    }
+};
+
 //GET /public/download/:token
 export const downloadPublicFolder = async (req: Request, res: Response) => {
     try {
