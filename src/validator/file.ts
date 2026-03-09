@@ -1,33 +1,68 @@
 import { z } from 'zod';
 
-// Ce schéma servira pour Download ET Delete (et tout ce qui a besoin d'un ID)
 export const fileIdSchema = z.object({
     params: z.object({
-        // On vérifie que c'est une chaîne composée uniquement de chiffres
-        id: z.string({ message: "L'ID est requis" })
-             .regex(/^\d+$/, "L'ID du fichier doit être un nombre valide")
+        id: z.coerce.number().int().positive("L'ID du fichier doit être un entier positif.")
     })
 });
 
 export const recentFileSchema = z.object({
     query: z.object({
-        // On accepte un nombre, avec une valeur par défaut de 10
         limit: z.coerce.number().min(1).max(50).default(6)
     })
 });
 
 export const updateFileSchema = z.object({
     params: z.object({
-        id: z.coerce.number()
+        id: z.coerce.number().int().positive()
     }),
     body: z.object({
-        name: z.string().min(1, "Le nom ne peut pas être vide").optional(),
-        // On pourra ajouter d'autres champs ici plus tard (ex: folder_id pour déplacer)
+        name: z.string()
+            .min(1, "Le nom du fichier ne peut pas être vide.")
+            .max(255, "Le nom du fichier est trop long.")
+            .regex(/^[^\\/:*?"<>|]+$/, 'Le nom contient des caractères non autorisés.')
+            .optional()
     })
 });
 
 export const uploadFilesSchema = z.object({
     body: z.object({
         folder_id: z.coerce.number().int().positive().optional()
+    })
+});
+
+export const moveFileSchema = z.object({
+    params: z.object({
+        id: z.coerce.number().int().positive("L'ID du fichier doit être un entier positif.")
+    }),
+    body: z.object({
+        folder_id: z.coerce.number().int().positive().nullable()
+    })
+});
+
+export const copyFileSchema = z.object({
+    params: z.object({
+        id: z.coerce.number().int().positive("L'ID du fichier doit être un entier positif.")
+    })
+});
+
+export const thumbnailSchema = z.object({
+    params: z.object({
+        id: z.coerce.number().int().positive("L'ID du fichier doit être un entier positif.")
+    }),
+    query: z.object({
+        size: z.enum(['small', 'medium']).default('medium')
+    })
+});
+
+export const moveMultipleItemsSchema = z.object({
+    body: z.object({
+        items: z.array(
+            z.object({
+                type: z.enum(['file', 'folder']),
+                id: z.coerce.number().int().positive()
+            })
+        ).min(1, "Au moins un élément à déplacer."),
+        destination_folder_id: z.coerce.number().int().positive().nullable()
     })
 });
