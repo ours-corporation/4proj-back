@@ -16,7 +16,7 @@ const publicRouter = Router();
 /**
  * @swagger
  * /public/access/{token}:
- *   get:
+ *   post:
  *     tags:
  *       - Public
  *     summary: Accéder à un contenu via lien public
@@ -62,7 +62,7 @@ const publicRouter = Router();
  *       410:
  *         description: Lien expiré
  */
-publicRouter.get('/access/:token',validate(accessPublicShareSchema),accessPublicShare);
+publicRouter.post('/access/:token',validate(accessPublicShareSchema),accessPublicShare);
 
 /**
  * @swagger
