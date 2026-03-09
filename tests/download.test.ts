@@ -10,6 +10,16 @@ vi.mock('../src/models', () => ({
     File: { findAll: vi.fn() }
 }));
 
+vi.mock('../src/services/thumbnail', () => ({
+    default: {
+        isImage: vi.fn(() => false),
+        getSmallThumbnailBase64: vi.fn(() => null),
+        generateThumbnails: vi.fn().mockResolvedValue(undefined),
+        copyThumbnails: vi.fn().mockResolvedValue(undefined),
+        deleteThumbnails: vi.fn().mockResolvedValue(undefined)
+    }
+}));
+
 vi.mock('fs', () => ({
     existsSync: vi.fn(() => true)
 }));

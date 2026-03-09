@@ -16,7 +16,7 @@ const options: swaggerJsdoc.Options = {
                 description: 'Serveur de développement local',
             },
             {
-                url: 'https://api.supfile.dev-lecomte.fr/api',
+                url: 'https://api-supfile.dev-lecomte.fr/api',
                 description: 'Serveur de production',
             }
         ],

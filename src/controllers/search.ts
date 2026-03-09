@@ -4,7 +4,6 @@ import { SearchFilters } from '../validator/search';
 
 export const searchContent = async (req: Request, res: Response) => {
     try {
-        // @ts-ignore
         const userId = req.user.id;
         
         // req.query a été validé et transformé par Zod

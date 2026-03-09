@@ -1,11 +1,10 @@
 import { Router } from 'express';
-import { createFolder, getFolder } from '../controllers/folder';
+import { createFolder, getFolder, renameFolder, copyFolder, downloadFolder } from '../controllers/folder';
 import { requireAuth } from '../middleware/auth';
 import { validate } from '../middleware/validate';
-import { createFolderSchema, getFolderSchema } from '../validator/folder';
+import { createFolderSchema, getFolderSchema, copyFolderSchema, renameFolderSchema } from '../validator/folder';
 import { moveToTrash, restoreFromTrash, deletePermanently } from '../controllers/trash';
 import { trashIdSchema } from '../validator/trash';
-import { downloadFolder } from '../controllers/folder';
 
 const folderRouter = Router();
 
@@ -127,6 +126,95 @@ folderRouter.get('/', requireAuth, getFolder);
  *         description: Dossier introuvable
  */
 folderRouter.get('/:id',requireAuth,validate(getFolderSchema),getFolder);
+
+/**
+ * @swagger
+ * /folders/{id}:
+ *   put:
+ *     tags:
+ *       - Folders
+ *     summary: Renommer un dossier
+ *     description: |
+ *       Renomme un dossier existant.
+ *       Nécessite d'être le propriétaire du dossier (accès OWNER).
+ *       Impossible de renommer un dossier dans la corbeille.
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: ID du dossier à renommer
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - name
+ *             properties:
+ *               name:
+ *                 type: string
+ *                 example: "Nouveau nom"
+ *     responses:
+ *       200:
+ *         description: Dossier renommé avec succès
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Folder'
+ *       400:
+ *         description: Dossier dans la corbeille
+ *       403:
+ *         description: Accès interdit (propriétaire requis)
+ *       404:
+ *         description: Dossier introuvable
+ */
+folderRouter.put('/:id',requireAuth,validate(renameFolderSchema),renameFolder);
+
+/**
+ * @swagger
+ * /folders/{id}/copy:
+ *   post:
+ *     tags:
+ *       - Folders
+ *     summary: Dupliquer un dossier (récursif)
+ *     description: |
+ *       Crée une copie complète du dossier au même emplacement (même parent).
+ *       La copie inclut tous les sous-dossiers et fichiers (récursif).
+ *       Le dossier copié et tout son contenu appartiennent à l'utilisateur qui effectue la copie.
+ *       Nécessite un accès OWNER ou WRITE sur le dossier source.
+ *       Le quota est vérifié avant la copie (somme de tous les fichiers).
+ *       Le nom suit le format "nom (copie)", "nom (copie 2)", etc.
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: ID du dossier à copier
+ *     responses:
+ *       201:
+ *         description: Dossier copié avec succès
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Folder'
+ *       400:
+ *         description: Le dossier est dans la corbeille
+ *       403:
+ *         description: Accès interdit (permissions insuffisantes)
+ *       404:
+ *         description: Dossier introuvable
+ *       413:
+ *         description: Quota dépassé
+ */
+folderRouter.post('/:id/copy',requireAuth,validate(copyFolderSchema),copyFolder);
 
 /**
  * @swagger
