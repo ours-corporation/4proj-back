@@ -16,7 +16,7 @@ const publicRouter = Router();
 /**
  * @swagger
  * /public/access/{token}:
- *   post:
+ *   get:
  *     tags:
  *       - Public
  *     summary: Accéder à un contenu via lien public
@@ -67,7 +67,7 @@ publicRouter.get('/access/:token',validate(accessPublicShareSchema),accessPublic
 /**
  * @swagger
  * /public/download/{token}:
- *   post:
+ *   get:
  *     tags:
  *       - Public
  *     summary: Télécharger un dossier public en ZIP
