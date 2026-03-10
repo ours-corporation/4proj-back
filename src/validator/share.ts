@@ -30,6 +30,25 @@ export const createPrivateShareSchema = z.object({
     })
 });
 
+// Schéma pour modifier un partage existant
+export const updateShareSchema = z.object({
+    params: z.object({
+        id: z.coerce.number().int().positive("L'ID du partage doit être un entier positif.")
+    }),
+    body: z.object({
+        permission: z.enum(['READ', 'WRITE']).optional(),
+        password: z.string().min(4, "Le mot de passe doit faire au moins 4 caractères").nullable().optional(),
+        expiresAt: z.string().datetime({ message: "Format de date invalide (ISO 8601 requis)" }).nullable().optional()
+    })
+});
+
+// Schéma pour consulter les partages d'un item
+export const itemSharesSchema = z.object({
+    params: z.object({
+        id: z.coerce.number().int().positive("L'ID doit être un entier positif.")
+    })
+});
+
 // Schéma pour accéder à un lien public (Vérification mot de passe)
 export const accessPublicShareSchema = z.object({
     params: z.object({

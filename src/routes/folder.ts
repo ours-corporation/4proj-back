@@ -1,8 +1,10 @@
 import { Router } from 'express';
 import { createFolder, getFolder, renameFolder, copyFolder, downloadFolder } from '../controllers/folder';
+import { getFolderShares } from '../controllers/share';
 import { requireAuth } from '../middleware/auth';
 import { validate } from '../middleware/validate';
 import { createFolderSchema, getFolderSchema, copyFolderSchema, renameFolderSchema } from '../validator/folder';
+import { itemSharesSchema } from '../validator/share';
 import { moveToTrash, restoreFromTrash, deletePermanently } from '../controllers/trash';
 import { trashIdSchema } from '../validator/trash';
 
@@ -215,6 +217,63 @@ folderRouter.put('/:id',requireAuth,validate(renameFolderSchema),renameFolder);
  *         description: Quota dépassé
  */
 folderRouter.post('/:id/copy',requireAuth,validate(copyFolderSchema),copyFolder);
+
+/**
+ * @swagger
+ * /folders/{id}/shares:
+ *   get:
+ *     tags:
+ *       - Folders
+ *     summary: Lister les partages d'un dossier
+ *     description: |
+ *       Retourne tous les partages (publics et privés) associés à ce dossier.
+ *       Seul le propriétaire du dossier peut consulter cette liste.
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: ID du dossier
+ *     responses:
+ *       200:
+ *         description: Liste des partages du dossier
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 type: object
+ *                 properties:
+ *                   id:
+ *                     type: integer
+ *                   shareType:
+ *                     type: string
+ *                     enum: [public, private]
+ *                   recipient:
+ *                     type: object
+ *                     nullable: true
+ *                   token:
+ *                     type: string
+ *                     nullable: true
+ *                   hasPassword:
+ *                     type: boolean
+ *                   expiresAt:
+ *                     type: string
+ *                     format: date-time
+ *                     nullable: true
+ *                   permission:
+ *                     type: string
+ *                     enum: [READ, WRITE]
+ *                   createdAt:
+ *                     type: string
+ *                     format: date-time
+ *       404:
+ *         description: Dossier introuvable ou accès refusé
+ */
+folderRouter.get('/:id/shares',requireAuth,validate(itemSharesSchema),getFolderShares);
 
 /**
  * @swagger

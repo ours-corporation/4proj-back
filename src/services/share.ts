@@ -154,6 +154,101 @@ class ShareService {
         await share.destroy();
     }
 
+    async getMyShares(ownerId: number) {
+        const shares = await Share.findAll({
+            where: { owner_id: ownerId },
+            include: [
+                { model: File },
+                { model: Folder },
+                { model: User, as: 'recipient', attributes: ['id', 'username', 'email'] }
+            ],
+            order: [['createdAt', 'DESC']]
+        });
+
+        return shares.map((share: any) => {
+            const s = share.toJSON();
+            return {
+                id: s.id,
+                type: s.file_id ? 'file' : 'folder',
+                item: s.file || s.folder,
+                shareType: s.token ? 'public' : 'private',
+                recipient: s.recipient || null,
+                token: s.token || null,
+                hasPassword: !!s.password_hash,
+                expiresAt: s.expires_at,
+                permission: s.permission,
+                createdAt: s.createdAt
+            };
+        });
+    }
+
+    async getItemShares(ownerId: number, target: { type: 'file' | 'folder', id: number }) {
+        await this.verifyOwnership(ownerId, target.type, target.id);
+
+        const where: any = { owner_id: ownerId };
+        if (target.type === 'file') {
+            where.file_id = target.id;
+        } else {
+            where.folder_id = target.id;
+        }
+
+        const shares = await Share.findAll({
+            where,
+            include: [
+                { model: User, as: 'recipient', attributes: ['id', 'username', 'email'] }
+            ],
+            order: [['createdAt', 'DESC']]
+        });
+
+        return shares.map((share: any) => {
+            const s = share.toJSON();
+            return {
+                id: s.id,
+                shareType: s.token ? 'public' : 'private',
+                recipient: s.recipient || null,
+                token: s.token || null,
+                hasPassword: !!s.password_hash,
+                expiresAt: s.expires_at,
+                permission: s.permission,
+                createdAt: s.createdAt
+            };
+        });
+    }
+
+    async updateShare(ownerId: number, shareId: number, updates: { permission?: 'READ' | 'WRITE', password?: string | null, expiresAt?: string | null }) {
+        const share = await Share.findOne({ where: { id: shareId, owner_id: ownerId } });
+        if (!share) throw new Error("Partage introuvable ou vous n'êtes pas le propriétaire.");
+
+        const fieldsToUpdate: any = {};
+
+        if (updates.permission !== undefined) {
+            fieldsToUpdate.permission = updates.permission;
+        }
+
+        if (updates.password !== undefined) {
+            if (updates.password === null) {
+                fieldsToUpdate.password_hash = null;
+            } else {
+                fieldsToUpdate.password_hash = await bcrypt.hash(updates.password, 10);
+            }
+        }
+
+        if (updates.expiresAt !== undefined) {
+            if (updates.expiresAt === null) {
+                fieldsToUpdate.expires_at = null;
+            } else {
+                const date = new Date(updates.expiresAt);
+                if (date <= new Date()) {
+                    throw new Error("La date d'expiration doit être dans le futur.");
+                }
+                fieldsToUpdate.expires_at = date;
+            }
+        }
+
+        await share.update(fieldsToUpdate);
+        return share;
+    }
+
     async hasFolderAccess(userId: number, folderId: number): Promise<'READ' | 'WRITE' | null> {
         let currentFolderId: number | null = folderId;
 
