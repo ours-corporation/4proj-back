@@ -101,6 +101,32 @@ class TrashService {
         await user.save();
     }
 
+    async emptyTrash(userId: number) {
+        const user = await User.findByPk(userId);
+        if (!user) throw new Error("User introuvable");
+
+        const trashedFiles = await File.findAll({
+            where: { user_id: userId, trashed_at: { [Op.not]: null } }
+        });
+
+        for (const file of trashedFiles) {
+            await this.hardDeleteFile(file.id, userId, user);
+        }
+
+        const trashedFolders = await Folder.findAll({
+            where: { user_id: userId, trashed_at: { [Op.not]: null } }
+        });
+
+        for (const folder of trashedFolders) {
+            const stillExists = await Folder.findByPk(folder.id);
+            if (stillExists) {
+                await Folder.destroy({ where: { id: folder.id } });
+            }
+        }
+
+        await user.save();
+    }
+
     private async trashFolderRecursively(folderId: number, userId: number, batchId: string, date: Date) {
         await Folder.update(
             { trashed_at: date, deletion_id: batchId },

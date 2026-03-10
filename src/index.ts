@@ -29,7 +29,7 @@ app.use(express.urlencoded({ extended: true }));
 
 const supportedOrigins = process.env.APP_URL
     ? process.env.APP_URL.split(",")
-    : ["http://localhost:3000"];
+    : ["http://localhost:3000", "http://localhost:5555"];
 
 app.use(cors({
     origin: supportedOrigins,

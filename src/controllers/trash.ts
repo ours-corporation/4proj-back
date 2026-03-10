@@ -56,3 +56,14 @@ export const deletePermanently = async (req: Request, res: Response) => {
         res.status(500).json({ message: "Erreur serveur" });
     }
 };
+
+// DELETE /trash
+export const emptyTrash = async (req: Request, res: Response) => {
+    try {
+        await TrashService.emptyTrash(req.user.id);
+        res.json({ message: "Corbeille vidée avec succès." });
+    } catch (error: any) {
+        console.error(error);
+        res.status(500).json({ message: "Erreur serveur" });
+    }
+};
