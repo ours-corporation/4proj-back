@@ -19,7 +19,9 @@ vi.mock('../src/models', () => ({
         findOne: vi.fn()
     },
     User: {
-        findByPk: vi.fn()
+        findByPk: vi.fn(),
+        update: vi.fn().mockResolvedValue([1]),
+        sequelize: { literal: vi.fn((val: string) => val) }
     },
     Quota: {}
 }));
@@ -82,6 +84,7 @@ describe('FileService.copyFile', () => {
 
     const mockUserWithQuota = {
         id: ownerId,
+        used_bytes: 0,
         quota: { quota_bytes: 1000000 }
     };
 
@@ -95,13 +98,13 @@ describe('FileService.copyFile', () => {
 
         (File.findByPk as any).mockResolvedValueOnce(file);
         (User.findByPk as any).mockResolvedValueOnce(mockUserWithQuota);
-        (File.sum as any).mockResolvedValueOnce(0);
         (File.findAll as any).mockResolvedValueOnce([]);
         (File.create as any).mockResolvedValueOnce(createdFile);
 
         const result = await FileService.copyFile(1, ownerId);
 
         expect(result.name).toBe('document (copie)');
+        expect(User.update).toHaveBeenCalled();
         expect(File.create).toHaveBeenCalledWith(expect.objectContaining({
             name: 'document (copie)',
             extension: 'pdf',
@@ -119,8 +122,7 @@ describe('FileService.copyFile', () => {
 
         (File.findByPk as any).mockResolvedValueOnce(file);
         (ShareService.hasFileAccess as any).mockResolvedValueOnce('WRITE');
-        (User.findByPk as any).mockResolvedValueOnce({ id: guestId, quota: { quota_bytes: 1000000 } });
-        (File.sum as any).mockResolvedValueOnce(0);
+        (User.findByPk as any).mockResolvedValueOnce({ id: guestId, used_bytes: 0, quota: { quota_bytes: 1000000 } });
         (File.findAll as any).mockResolvedValueOnce([]);
         (File.create as any).mockResolvedValueOnce(createdFile);
 
@@ -162,8 +164,7 @@ describe('FileService.copyFile', () => {
         const file = createMockFile(1, { size_bytes: 500000 });
 
         (File.findByPk as any).mockResolvedValueOnce(file);
-        (User.findByPk as any).mockResolvedValueOnce({ id: ownerId, quota: { quota_bytes: 600000 } });
-        (File.sum as any).mockResolvedValueOnce(500000);
+        (User.findByPk as any).mockResolvedValueOnce({ id: ownerId, used_bytes: 500000, quota: { quota_bytes: 600000 } });
 
         await expect(FileService.copyFile(1, ownerId))
             .rejects.toThrow('quota');
@@ -175,7 +176,6 @@ describe('FileService.copyFile', () => {
 
         (File.findByPk as any).mockResolvedValueOnce(file);
         (User.findByPk as any).mockResolvedValueOnce(mockUserWithQuota);
-        (File.sum as any).mockResolvedValueOnce(0);
         (File.findAll as any).mockResolvedValueOnce([
             { name: 'document (copie)' }
         ]);
