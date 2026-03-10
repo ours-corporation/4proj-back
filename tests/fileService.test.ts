@@ -15,7 +15,9 @@ vi.mock('../src/models', () => ({
         findOne: vi.fn() 
     },
     User: {
-        findByPk: vi.fn()
+        findByPk: vi.fn(),
+        update: vi.fn().mockResolvedValue([1]),
+        sequelize: { literal: vi.fn((val: string) => val) }
     },
     Quota: {}
 }));
@@ -78,9 +80,9 @@ describe('FileService', () => {
         beforeEach(() => {
             (User.findByPk as any).mockResolvedValue({
                 id: userId,
+                used_bytes: 0,
                 quota: { quota_bytes: 30 * 1024 * 1024 * 1024 }
             });
-            (File.sum as any).mockResolvedValue(0);
         });
 
         it('devrait jeter une erreur si aucun fichier n\'est fourni', async () => {

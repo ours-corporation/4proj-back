@@ -144,7 +144,7 @@ class FileService {
 
         await ThumbnailService.copyThumbnails(file.physical_key, file.user_id, newPhysicalKey, userId);
 
-        return await File.create({
+        const copiedFile = await File.create({
             name: copyName,
             extension: file.extension,
             size_bytes: file.size_bytes,
@@ -153,6 +153,13 @@ class FileService {
             user_id: userId,
             folder_id: file.folder_id
         });
+
+        await User.update(
+            { used_bytes: User.sequelize!.literal(`used_bytes + ${Number(file.size_bytes)}`) },
+            { where: { id: userId } }
+        );
+
+        return copiedFile;
     }
 
     async getThumbnail(fileId: number, userId: number, size: 'small' | 'medium') {
@@ -239,10 +246,7 @@ class FileService {
         }
 
         const maxQuotaBytes = Number(user.quota.quota_bytes);
-
-        const currentUsage = await File.sum('size_bytes', { 
-            where: { user_id: userId } 
-        }) || 0;
+        const currentUsage = Number(user.used_bytes);
 
         if (currentUsage + incomingBytes > maxQuotaBytes) {
             throw new Error("Espace insuffisant. Vous avez atteint votre quota.");
@@ -253,7 +257,7 @@ class FileService {
         const userDir = path.join(UPLOAD_ROOT, userId.toString());
         await fs.promises.mkdir(userDir, { recursive: true });
 
-        return await Promise.all(files.map(async (file) => {
+        const savedFiles = await Promise.all(files.map(async (file) => {
             const physicalKey = uuidv4();
             const targetPath = path.join(userDir, physicalKey);
 
@@ -280,6 +284,14 @@ class FileService {
 
             return newFile;
         }));
+
+        const totalSize = files.reduce((acc, f) => acc + f.size, 0);
+        await User.update(
+            { used_bytes: User.sequelize!.literal(`used_bytes + ${totalSize}`) },
+            { where: { id: userId } }
+        );
+
+        return savedFiles;
     }
 
     private async getExistingFileNames(folderId: number | null): Promise<string[]> {
