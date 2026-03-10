@@ -2,8 +2,10 @@ import { Router } from 'express';
 import upload from '../middleware/upload';
 import { uploadFile, downloadFile, getRecentFiles, updateFile, moveFile, copyFile, getThumbnail, streamFile } from '../controllers/file';
 import { uploadFiles } from '../controllers/file';
+import { getFileShares } from '../controllers/share';
 import { requireAuth } from '../middleware/auth';
 import { fileIdSchema, recentFileSchema, updateFileSchema, uploadFilesSchema, moveFileSchema, copyFileSchema, thumbnailSchema } from '../validator/file';
+import { itemSharesSchema } from '../validator/share';
 import { validate } from '../middleware/validate';
 import { moveToTrash, restoreFromTrash, deletePermanently } from '../controllers/trash';
 import { trashIdSchema } from '../validator/trash';
@@ -340,6 +342,63 @@ filesRouter.get('/:id/thumbnail',requireAuth,validate(thumbnailSchema),getThumbn
  *         description: Range non satisfaisable
  */
 filesRouter.get('/:id/stream',requireAuth,validate(fileIdSchema),streamFile);
+
+/**
+ * @swagger
+ * /files/{id}/shares:
+ *   get:
+ *     tags:
+ *       - Files
+ *     summary: Lister les partages d'un fichier
+ *     description: |
+ *       Retourne tous les partages (publics et privés) associés à ce fichier.
+ *       Seul le propriétaire du fichier peut consulter cette liste.
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: ID du fichier
+ *     responses:
+ *       200:
+ *         description: Liste des partages du fichier
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 type: object
+ *                 properties:
+ *                   id:
+ *                     type: integer
+ *                   shareType:
+ *                     type: string
+ *                     enum: [public, private]
+ *                   recipient:
+ *                     type: object
+ *                     nullable: true
+ *                   token:
+ *                     type: string
+ *                     nullable: true
+ *                   hasPassword:
+ *                     type: boolean
+ *                   expiresAt:
+ *                     type: string
+ *                     format: date-time
+ *                     nullable: true
+ *                   permission:
+ *                     type: string
+ *                     enum: [READ, WRITE]
+ *                   createdAt:
+ *                     type: string
+ *                     format: date-time
+ *       404:
+ *         description: Fichier introuvable ou accès refusé
+ */
+filesRouter.get('/:id/shares',requireAuth,validate(itemSharesSchema),getFileShares);
 
 /**
  * @swagger
