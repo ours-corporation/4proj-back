@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { requireAuth } from '../middleware/auth';
-import { getTrash } from '../controllers/trash';
+import { getTrash, emptyTrash } from '../controllers/trash';
 
 const trashRouter = Router();
 
@@ -48,5 +48,35 @@ const trashRouter = Router();
  *         description: Erreur serveur.
  */
 trashRouter.get('/',requireAuth,getTrash);
+
+/**
+ * @swagger
+ * /trash:
+ *   delete:
+ *     tags:
+ *       - Trash
+ *     summary: Vider la corbeille
+ *     description: |
+ *       Supprime définitivement tous les fichiers et dossiers présents dans la corbeille de l'utilisateur.
+ *       Les fichiers physiques sont supprimés du disque et le `used_bytes` est mis à jour.
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Corbeille vidée avec succès.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: "Corbeille vidée avec succès."
+ *       401:
+ *         description: Non authentifié.
+ *       500:
+ *         description: Erreur serveur.
+ */
+trashRouter.delete('/',requireAuth,emptyTrash);
 
 export default trashRouter;
