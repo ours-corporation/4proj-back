@@ -403,7 +403,7 @@ filesRouter.get('/:id/shares',requireAuth,validate(itemSharesSchema),getFileShar
 /**
  * @swagger
  * /files/{id}/trash:
- *   put:
+ *   delete:
  *     tags:
  *       - Files
  *     summary: Mettre un fichier à la corbeille (Soft Delete)
@@ -426,7 +426,7 @@ filesRouter.get('/:id/shares',requireAuth,validate(itemSharesSchema),getFileShar
  *       404:
  *         description: Fichier introuvable.
  */
-filesRouter.put('/:id/trash',requireAuth,validate(trashIdSchema),moveToTrash);
+filesRouter.delete('/:id/trash',requireAuth,validate(trashIdSchema),moveToTrash);
 
 /**
  * @swagger
