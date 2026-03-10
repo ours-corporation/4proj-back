@@ -19,7 +19,9 @@ vi.mock('../src/models', () => ({
         findOne: vi.fn()
     },
     User: {
-        findByPk: vi.fn()
+        findByPk: vi.fn(),
+        update: vi.fn().mockResolvedValue([1]),
+        sequelize: { literal: vi.fn((val: string) => val) }
     },
     Quota: {}
 }));
@@ -78,6 +80,7 @@ describe('FolderService.copyFolder', () => {
 
     const mockUserWithQuota = {
         id: ownerId,
+        used_bytes: 0,
         quota: { quota_bytes: 10000000 }
     };
 
@@ -126,7 +129,6 @@ describe('FolderService.copyFolder', () => {
         (Folder.findAll as any).mockResolvedValueOnce([]); // no subfolders for size calc
         // quota check
         (User.findByPk as any).mockResolvedValueOnce(mockUserWithQuota);
-        (File.sum as any).mockResolvedValueOnce(0); // current usage
         // getExistingSiblingFolderNames
         (Folder.findAll as any).mockResolvedValueOnce([]);
         (Folder.create as any).mockResolvedValueOnce(newFolder);
@@ -210,9 +212,8 @@ describe('FolderService.copyFolder', () => {
         // calculateFolderSize returns large size
         (File.sum as any).mockResolvedValueOnce(5000000);
         (Folder.findAll as any).mockResolvedValueOnce([]);
-        // quota check
-        (User.findByPk as any).mockResolvedValueOnce({ id: ownerId, quota: { quota_bytes: 6000000 } });
-        (File.sum as any).mockResolvedValueOnce(4000000); // current usage: 4M + 5M > 6M
+        // quota check: used 4M + incoming 5M > max 6M
+        (User.findByPk as any).mockResolvedValueOnce({ id: ownerId, used_bytes: 4000000, quota: { quota_bytes: 6000000 } });
 
         await expect(FolderService.copyFolder(5, ownerId))
             .rejects.toThrow('quota');
