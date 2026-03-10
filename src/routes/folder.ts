@@ -278,7 +278,7 @@ folderRouter.get('/:id/shares',requireAuth,validate(itemSharesSchema),getFolderS
 /**
  * @swagger
  * /folders/{id}/trash:
- *   put:
+ *   delete:
  *     tags:
  *       - Folders
  *     summary: Mettre un dossier à la corbeille (Soft Delete récursif)
@@ -302,7 +302,7 @@ folderRouter.get('/:id/shares',requireAuth,validate(itemSharesSchema),getFolderS
  *       404:
  *         description: Dossier introuvable.
  */
-folderRouter.put('/:id/trash',requireAuth,validate(trashIdSchema),moveToTrash);
+folderRouter.delete('/:id/trash',requireAuth,validate(trashIdSchema),moveToTrash);
 
 /**
  * @swagger

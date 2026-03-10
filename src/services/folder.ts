@@ -164,6 +164,13 @@ class FolderService {
 
         await this.copyFolderContents(folderId, newFolder.id, userId);
 
+        if (totalSize > 0) {
+            await User.update(
+                { used_bytes: User.sequelize!.literal(`used_bytes + ${totalSize}`) },
+                { where: { id: userId } }
+            );
+        }
+
         return newFolder;
     }
 
@@ -281,7 +288,7 @@ class FolderService {
         }
 
         const maxQuotaBytes = Number(user.quota.quota_bytes);
-        const currentUsage = await File.sum('size_bytes', { where: { user_id: userId } }) || 0;
+        const currentUsage = Number(user.used_bytes);
 
         if (currentUsage + incomingBytes > maxQuotaBytes) {
             throw new Error("Espace insuffisant. Vous avez atteint votre quota.");
