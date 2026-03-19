@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import archiver from 'archiver';
 import FolderService from '../src/services/folder';
 import ShareService from '../src/services/share';
-import { downloadPublicFolder } from '../src/controllers/share';
+import { downloadPublicFolder, downloadPublicFile } from '../src/controllers/share';
 import { Folder, File } from '../src/models';
 
 vi.mock('../src/models', () => ({
@@ -21,6 +21,9 @@ vi.mock('../src/services/thumbnail', () => ({
 }));
 
 vi.mock('fs', () => ({
+    default: {
+        existsSync: vi.fn(() => true)
+    },
     existsSync: vi.fn(() => true)
 }));
 
@@ -151,10 +154,10 @@ describe('Système de Téléchargement ZIP (Privé & Public)', () => {
             const req = mockRequest('token-valide');
             const res = mockResponse();
 
-            vi.spyOn(ShareService, 'getPublicContent').mockResolvedValue({ 
-                protected: false, 
-                type: 'folder', 
-                data: { id: 10, name: 'Dossier Public' } 
+            vi.spyOn(ShareService, 'getPublicContent').mockResolvedValue({
+                protected: false,
+                type: 'folder',
+                data: { id: 10, name: 'Dossier Public' }
             } as any);
 
             const spyCreateZip = vi.spyOn(FolderService, 'createZipStream').mockResolvedValue();
@@ -163,8 +166,129 @@ describe('Système de Téléchargement ZIP (Privé & Public)', () => {
 
             expect(res.setHeader).toHaveBeenCalledWith('Content-Type', 'application/zip');
             expect(res.setHeader).toHaveBeenCalledWith('Content-Disposition', 'attachment; filename="Dossier%20Public.zip"');
-            
+
             expect(spyCreateZip).toHaveBeenCalledWith(10, 'Dossier Public', res);
+        });
+    });
+
+    describe('ShareController.downloadPublicFile (Téléchargement Fichier Public via Token)', () => {
+
+        const mockRequest = (token: string, password?: string) => ({
+            params: { token },
+            body: { password },
+            query: {}
+        } as any);
+
+        const mockResponse = () => {
+            const res: any = {};
+            res.status = vi.fn().mockReturnValue(res);
+            res.json = vi.fn().mockReturnValue(res);
+            res.download = vi.fn();
+            res.headersSent = false;
+            return res;
+        };
+
+        it('devrait renvoyer 403 si le lien public exige un mot de passe (non fourni)', async () => {
+            const req = mockRequest('token-secret');
+            const res = mockResponse();
+
+            vi.spyOn(ShareService, 'getPublicContent').mockResolvedValue({ protected: true } as any);
+
+            await downloadPublicFile(req, res);
+
+            expect(res.status).toHaveBeenCalledWith(403);
+            expect(res.json).toHaveBeenCalledWith({ message: "Mot de passe requis pour télécharger." });
+        });
+
+        it('devrait renvoyer 400 si le token public pointe vers un dossier', async () => {
+            const req = mockRequest('token-folder');
+            const res = mockResponse();
+
+            vi.spyOn(ShareService, 'getPublicContent').mockResolvedValue({
+                protected: false,
+                type: 'folder',
+                data: { id: 5 }
+            } as any);
+
+            await downloadPublicFile(req, res);
+
+            expect(res.status).toHaveBeenCalledWith(400);
+            expect(res.json).toHaveBeenCalledWith({ message: "Ce lien pointe vers un dossier, pas un fichier." });
+        });
+
+        it('devrait renvoyer 404 si le fichier physique est introuvable sur le disque', async () => {
+            const req = mockRequest('token-valide');
+            const res = mockResponse();
+
+            vi.spyOn(ShareService, 'getPublicContent').mockResolvedValue({
+                protected: false,
+                type: 'file',
+                data: { id: 1, user_id: 42, physical_key: 'uuid-missing', name: 'rapport', extension: 'pdf' }
+            } as any);
+
+            const fsModule = await import('fs');
+            (fsModule.default.existsSync as any).mockReturnValue(false);
+
+            await downloadPublicFile(req, res);
+
+            expect(res.status).toHaveBeenCalledWith(404);
+            expect(res.json).toHaveBeenCalledWith({ message: "Fichier introuvable sur le serveur." });
+        });
+
+        it('devrait déclencher res.download avec le bon nom de fichier (avec extension)', async () => {
+            const req = mockRequest('token-valide');
+            const res = mockResponse();
+
+            vi.spyOn(ShareService, 'getPublicContent').mockResolvedValue({
+                protected: false,
+                type: 'file',
+                data: { id: 1, user_id: 42, physical_key: 'uuid-abc', name: 'rapport', extension: 'pdf' }
+            } as any);
+
+            const fsModule = await import('fs');
+            (fsModule.default.existsSync as any).mockReturnValue(true);
+
+            await downloadPublicFile(req, res);
+
+            expect(res.download).toHaveBeenCalledWith(
+                expect.stringContaining('uuid-abc'),
+                'rapport.pdf',
+                expect.any(Function)
+            );
+        });
+
+        it('devrait déclencher res.download sans extension si elle est absente', async () => {
+            const req = mockRequest('token-valide');
+            const res = mockResponse();
+
+            vi.spyOn(ShareService, 'getPublicContent').mockResolvedValue({
+                protected: false,
+                type: 'file',
+                data: { id: 1, user_id: 42, physical_key: 'uuid-abc', name: 'fichier-sans-ext', extension: null }
+            } as any);
+
+            const fsModule = await import('fs');
+            (fsModule.default.existsSync as any).mockReturnValue(true);
+
+            await downloadPublicFile(req, res);
+
+            expect(res.download).toHaveBeenCalledWith(
+                expect.stringContaining('uuid-abc'),
+                'fichier-sans-ext',
+                expect.any(Function)
+            );
+        });
+
+        it('devrait renvoyer 404 si le token est invalide ou expiré', async () => {
+            const req = mockRequest('token-invalide');
+            const res = mockResponse();
+
+            vi.spyOn(ShareService, 'getPublicContent').mockRejectedValue(new Error("Lien invalide ou introuvable."));
+
+            await downloadPublicFile(req, res);
+
+            expect(res.status).toHaveBeenCalledWith(404);
+            expect(res.json).toHaveBeenCalledWith({ message: "Lien invalide ou introuvable." });
         });
     });
 });

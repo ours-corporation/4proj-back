@@ -1,8 +1,7 @@
 import { Router } from 'express';
 import { validate } from '../middleware/validate';
 import { accessPublicShareSchema } from '../validator/share';
-import { accessPublicShare } from '../controllers/share';
-import { downloadPublicFolder } from '../controllers/share';
+import { accessPublicShare, downloadPublicFolder, downloadPublicFile } from '../controllers/share';
 
 const publicRouter = Router();
 
@@ -100,5 +99,46 @@ publicRouter.post('/access/:token',validate(accessPublicShareSchema),accessPubli
  *         description: Lien invalide ou expiré
  */
 publicRouter.post('/download/:token',validate(accessPublicShareSchema),downloadPublicFolder);
+
+/**
+ * @swagger
+ * /public/stream/{token}:
+ *   post:
+ *     tags:
+ *       - Public
+ *     summary: Télécharger un fichier public via lien de partage
+ *     description: |
+ *       Télécharge directement le fichier associé au lien de partage public.
+ *       Si le lien est protégé par mot de passe, il doit être envoyé dans le body.
+ *       Si le token pointe vers un dossier et non un fichier, une erreur 400 est retournée.
+ *     parameters:
+ *       - in: path
+ *         name: token
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: 'Le token unique du lien de partage (ex: uuid)'
+ *     requestBody:
+ *       required: false
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/ShareAccessInput'
+ *     responses:
+ *       200:
+ *         description: Fichier téléchargé (stream binaire)
+ *         content:
+ *           application/octet-stream:
+ *             schema:
+ *               type: string
+ *               format: binary
+ *       400:
+ *         description: Le token pointe vers un dossier, pas un fichier
+ *       403:
+ *         description: Mot de passe requis ou incorrect
+ *       404:
+ *         description: Lien invalide, expiré ou fichier physique introuvable
+ */
+publicRouter.post('/stream/:token', validate(accessPublicShareSchema), downloadPublicFile);
 
 export default publicRouter;
