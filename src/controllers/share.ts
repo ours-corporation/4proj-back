@@ -1,8 +1,11 @@
 import { Request, Response } from 'express';
+import fs from 'fs';
+import path from 'path';
 import ShareService from '../services/share';
 import FolderService from '../services/folder';
 
-// POST /shares/public
+const UPLOAD_ROOT = '/app/uploads';
+
 export const createPublicShare = async (req: Request, res: Response) => {
     try {
         const target = req.body.fileId 
@@ -23,7 +26,6 @@ export const createPublicShare = async (req: Request, res: Response) => {
     }
 };
 
-//POST /shares/private
 export const createPrivateShare = async (req: Request, res: Response) => {
     try {
         const target = req.body.fileId 
@@ -46,7 +48,6 @@ export const createPrivateShare = async (req: Request, res: Response) => {
     }
 };
 
-//POST /public/access/:token
 export const accessPublicShare = async (req: Request, res: Response) => {
     try {
         const { token } = req.params;
@@ -67,7 +68,6 @@ export const accessPublicShare = async (req: Request, res: Response) => {
     }
 };
 
-//GET /shares/received
 export const getReceivedShares = async (req: Request, res: Response) => {
     try {
         const shares = await ShareService.getSharedWithMe(req.user.id);
@@ -78,7 +78,6 @@ export const getReceivedShares = async (req: Request, res: Response) => {
     }
 };
 
-//DELETE /shares/:id
 export const revokeShare = async (req: Request, res: Response) => {
     try {
         const shareId = parseInt(req.params.id);
@@ -93,7 +92,6 @@ export const revokeShare = async (req: Request, res: Response) => {
     }
 };
 
-// GET /shares/sent
 export const getMyShares = async (req: Request, res: Response) => {
     try {
         const shares = await ShareService.getMyShares(req.user.id);
@@ -104,7 +102,6 @@ export const getMyShares = async (req: Request, res: Response) => {
     }
 };
 
-// GET /files/:id/shares
 export const getFileShares = async (req: Request, res: Response) => {
     try {
         const fileId = parseInt(req.params.id);
@@ -116,7 +113,6 @@ export const getFileShares = async (req: Request, res: Response) => {
     }
 };
 
-// GET /folders/:id/shares
 export const getFolderShares = async (req: Request, res: Response) => {
     try {
         const folderId = parseInt(req.params.id);
@@ -128,7 +124,6 @@ export const getFolderShares = async (req: Request, res: Response) => {
     }
 };
 
-// PUT /shares/:id
 export const updateShare = async (req: Request, res: Response) => {
     try {
         const shareId = parseInt(req.params.id);
@@ -147,7 +142,47 @@ export const updateShare = async (req: Request, res: Response) => {
     }
 };
 
-//GET /public/download/:token
+export const downloadPublicFile = async (req: Request, res: Response) => {
+    try {
+        const { token } = req.params;
+        const password = req.body.password || req.query.password;
+
+        const shareInfo = await ShareService.getPublicContent(token, password as string);
+
+        if (shareInfo.protected) {
+            return res.status(403).json({ message: "Mot de passe requis pour télécharger." });
+        }
+
+        if (shareInfo.type !== 'file') {
+            return res.status(400).json({ message: "Ce lien pointe vers un dossier, pas un fichier." });
+        }
+
+        const file = shareInfo.data as any;
+        const filePath = path.join(UPLOAD_ROOT, file.user_id.toString(), file.physical_key);
+
+        if (!fs.existsSync(filePath)) {
+            return res.status(404).json({ message: "Fichier introuvable sur le serveur." });
+        }
+
+        const fileName = file.extension ? `${file.name}.${file.extension}` : file.name;
+
+        res.download(filePath, fileName, (err) => {
+            if (err) {
+                console.error("Erreur lors de l'envoi du fichier :", err);
+                if (!res.headersSent) {
+                    res.status(500).json({ message: "Erreur lors du téléchargement." });
+                }
+            }
+        });
+
+    } catch (error: any) {
+        console.error(error);
+        if (!res.headersSent) {
+            res.status(404).json({ message: error.message });
+        }
+    }
+};
+
 export const downloadPublicFolder = async (req: Request, res: Response) => {
     try {
         const { token } = req.params;
