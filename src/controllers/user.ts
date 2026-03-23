@@ -1,6 +1,7 @@
 import {Request, Response} from 'express';
 import { User } from '../models';
 import {compareString, hashString} from '../services/hash';
+import ProfilePictureService, { ProfilePictureQuality } from '../services/profilePicture';
 
 export const getMe = async (req: Request, res: Response) => {
     try {
@@ -100,6 +101,93 @@ export const updatePassword = async (req: Request, res: Response) => {
         return res.status(500).json({ message: 'Erreur serveur' });
     }
 }
+
+export const uploadProfilePicture = async (req: Request, res: Response) => {
+    try {
+        const userId = req.user.id;
+        const file = req.file;
+
+        if (!file) {
+            return res.status(400).json({ message: 'Aucun fichier fourni.' });
+        }
+
+        const user = await User.findByPk(userId);
+        if (!user) {
+            return res.status(404).json({ message: 'Utilisateur introuvable' });
+        }
+
+        // Supprimer l'ancienne photo si elle existe
+        if (user.profile_picture_key) {
+            ProfilePictureService.deleteProfilePicture(userId, user.profile_picture_key);
+        }
+
+        const key = await ProfilePictureService.saveProfilePicture(file, userId);
+        user.profile_picture_key = key;
+        await user.save();
+
+        return res.status(200).json({ message: 'Photo de profil mise à jour avec succès.' });
+    } catch (error: any) {
+        return res.status(400).json({ message: error.message || 'Erreur lors de l\'upload.' });
+    }
+};
+
+export const getProfilePicture = async (req: Request, res: Response) => {
+    try {
+        const userId = Number(req.params.id);
+        if (isNaN(userId)) {
+            return res.status(400).json({ message: 'ID utilisateur invalide' });
+        }
+
+        const quality = (req.query.quality as ProfilePictureQuality) || 'medium';
+        const validQualities: ProfilePictureQuality[] = ['low', 'medium', 'high'];
+        if (!validQualities.includes(quality)) {
+            return res.status(400).json({ message: 'Qualité invalide. Valeurs acceptées : low, medium, high.' });
+        }
+
+        const user = await User.findByPk(userId);
+        if (!user) {
+            return res.status(404).json({ message: 'Utilisateur introuvable' });
+        }
+
+        if (!user.profile_picture_key) {
+            return res.status(404).json({ message: 'Aucune photo de profil.' });
+        }
+
+        const buffer = await ProfilePictureService.getProfilePictureBuffer(userId, user.profile_picture_key, quality);
+
+        res.set('Content-Type', 'image/webp');
+        res.set('Cache-Control', 'public, max-age=3600');
+        return res.send(buffer);
+    } catch (error: any) {
+        if (error.message === 'Photo de profil introuvable.') {
+            return res.status(404).json({ message: error.message });
+        }
+        return res.status(500).json({ message: 'Erreur serveur' });
+    }
+};
+
+export const deleteProfilePicture = async (req: Request, res: Response) => {
+    try {
+        const userId = req.user.id;
+
+        const user = await User.findByPk(userId);
+        if (!user) {
+            return res.status(404).json({ message: 'Utilisateur introuvable' });
+        }
+
+        if (!user.profile_picture_key) {
+            return res.status(404).json({ message: 'Aucune photo de profil à supprimer.' });
+        }
+
+        ProfilePictureService.deleteProfilePicture(userId, user.profile_picture_key);
+        user.profile_picture_key = null;
+        await user.save();
+
+        return res.status(204).send();
+    } catch (error) {
+        return res.status(500).json({ message: 'Erreur serveur' });
+    }
+};
 
 export const getUserById = async (req: Request, res: Response) => {
     try {
