@@ -202,6 +202,32 @@ const options: swaggerJsdoc.Options = {
                         }
                     }
                 },
+                StorageCategoryStats: {
+                    type: 'object',
+                    properties: {
+                        bytes: { type: 'integer', format: 'int64', example: 1073741824 },
+                        percent: { type: 'number', format: 'float', example: 3.33 },
+                    },
+                },
+                StorageStats: {
+                    type: 'object',
+                    properties: {
+                        quota_bytes: { type: 'integer', format: 'int64', description: 'Quota total en octets', example: 32212254720 },
+                        used_bytes: { type: 'integer', format: 'int64', description: 'Espace utilise en octets', example: 5368709120 },
+                        free_bytes: { type: 'integer', format: 'int64', description: 'Espace libre en octets', example: 26843545600 },
+                        used_percent: { type: 'number', format: 'float', description: 'Pourcentage du quota utilise', example: 16.67 },
+                        free_percent: { type: 'number', format: 'float', description: 'Pourcentage du quota libre', example: 83.33 },
+                        categories: {
+                            type: 'object',
+                            properties: {
+                                video: { $ref: '#/components/schemas/StorageCategoryStats' },
+                                photo: { $ref: '#/components/schemas/StorageCategoryStats' },
+                                document: { $ref: '#/components/schemas/StorageCategoryStats' },
+                                other: { $ref: '#/components/schemas/StorageCategoryStats' },
+                            },
+                        },
+                    },
+                },
                 PublicContent: {
                     type: 'object',
                     properties: {
