@@ -1,7 +1,27 @@
 import { Router, Request, Response } from 'express';
-import { getMe, updateMe, deleteMe, updatePassword, getUserById } from "../controllers/user";
+import { getMe, updateMe, deleteMe, updatePassword, getUserById, uploadProfilePicture, getProfilePicture, deleteProfilePicture } from "../controllers/user";
 import { validate } from '../middleware/validate';
 import {updatePasswordValidatorSchema, updateUserValidatorSchema} from "../validator/user";
+import multer from 'multer';
+import os from 'os';
+
+const profilePictureUpload = multer({
+    storage: multer.diskStorage({
+        destination: os.tmpdir(),
+        filename: (_req, _file, cb) => {
+            cb(null, '4proj-avatar-' + Date.now() + '-' + Math.round(Math.random() * 1e9));
+        },
+    }),
+    limits: { fileSize: 5 * 1024 * 1024 }, // 5 MB max
+    fileFilter: (_req, file, cb) => {
+        const allowed = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
+        if (allowed.includes(file.mimetype)) {
+            cb(null, true);
+        } else {
+            cb(new Error('Format non supporté. Utilisez JPEG, PNG, WebP ou GIF.'));
+        }
+    },
+});
 
 const usersRouter = Router();
 
@@ -255,6 +275,216 @@ usersRouter.delete('/me', async (req: Request, res: Response) => {return deleteM
  *                   example: Erreur serveur
  */
 usersRouter.put('/me/update-password', validate(updatePasswordValidatorSchema), async (req: Request, res: Response) => {return updatePassword(req, res);});
+
+/**
+ * @swagger
+ * /users/me/profile-picture:
+ *   put:
+ *     security:
+ *       - bearerAuth: []
+ *     tags:
+ *       - Users
+ *     summary: Uploader ou remplacer la photo de profil
+ *     description: |
+ *       Permet à l'utilisateur connecté d'uploader ou de remplacer sa photo de profil.
+ *       - Taille maximale : 5 Mo
+ *       - Formats acceptés : JPEG, PNG, WebP, GIF
+ *       - L'image est redimensionnée en 512×512 px (crop centré) et convertie en WebP.
+ *       - L'ancienne photo est supprimée automatiquement.
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         multipart/form-data:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - file
+ *             properties:
+ *               file:
+ *                 type: string
+ *                 format: binary
+ *                 description: Image à utiliser comme photo de profil (max 5 Mo, JPEG/PNG/WebP/GIF)
+ *     responses:
+ *       200:
+ *         description: Photo de profil mise à jour avec succès
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: Photo de profil mise à jour avec succès.
+ *       400:
+ *         description: Fichier manquant ou invalide (format ou taille)
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: La photo de profil ne doit pas dépasser 5 Mo.
+ *       401:
+ *         description: Non authentifié
+ *       404:
+ *         description: Utilisateur introuvable
+ *       500:
+ *         description: Erreur serveur
+ */
+usersRouter.put('/me/profile-picture', profilePictureUpload.single('file'), async (req: Request, res: Response) => { return uploadProfilePicture(req, res); });
+
+/**
+ * @swagger
+ * /users/me/profile-picture:
+ *   delete:
+ *     security:
+ *       - bearerAuth: []
+ *     tags:
+ *       - Users
+ *     summary: Supprimer la photo de profil
+ *     description: Supprime la photo de profil de l'utilisateur connecté.
+ *     responses:
+ *       204:
+ *         description: Photo de profil supprimée avec succès
+ *       401:
+ *         description: Non authentifié
+ *       404:
+ *         description: Aucune photo de profil à supprimer
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: Aucune photo de profil à supprimer.
+ *       500:
+ *         description: Erreur serveur
+ */
+usersRouter.delete('/me/profile-picture', async (req: Request, res: Response) => { return deleteProfilePicture(req, res); });
+
+/**
+ * @swagger
+ * /users/me/profile-picture:
+ *   get:
+ *     operationId: getMyProfilePicture
+ *     security:
+ *       - bearerAuth: []
+ *     tags:
+ *       - Users
+ *     summary: Récupérer sa propre photo de profil
+ *     description: |
+ *       Retourne la photo de profil de l'utilisateur connecté au format WebP.
+ *       Le paramètre `quality` permet de choisir le niveau de compression :
+ *       - `low` : qualité 40 (image légère)
+ *       - `medium` : qualité 75 (par défaut, bon compromis)
+ *       - `high` : qualité 95 (haute fidélité)
+ *     parameters:
+ *       - name: quality
+ *         in: query
+ *         required: false
+ *         description: Niveau de qualité de l'image retournée
+ *         schema:
+ *           type: string
+ *           enum: [low, medium, high]
+ *           default: medium
+ *     responses:
+ *       200:
+ *         description: Image WebP de la photo de profil
+ *         content:
+ *           image/webp:
+ *             schema:
+ *               type: string
+ *               format: binary
+ *       400:
+ *         description: Qualité invalide
+ *       401:
+ *         description: Non authentifié
+ *       404:
+ *         description: Aucune photo de profil
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: Aucune photo de profil.
+ *       500:
+ *         description: Erreur serveur
+ */
+usersRouter.get('/me/profile-picture', async (req: Request, res: Response) => {
+    req.params.id = String(req.user.id);
+    return getProfilePicture(req, res);
+});
+
+/**
+ * @swagger
+ * /users/{id}/profile-picture:
+ *   get:
+ *     operationId: getProfilePictureById
+ *     security:
+ *       - bearerAuth: []
+ *     tags:
+ *       - Users
+ *     summary: Récupérer la photo de profil d'un utilisateur
+ *     description: |
+ *       Retourne la photo de profil d'un utilisateur au format WebP.
+ *       Le paramètre `quality` permet de choisir le niveau de compression :
+ *       - `low` : qualité 40 (image légère)
+ *       - `medium` : qualité 75 (par défaut, bon compromis)
+ *       - `high` : qualité 95 (haute fidélité)
+ *     parameters:
+ *       - name: id
+ *         in: path
+ *         required: true
+ *         description: ID de l'utilisateur
+ *         schema:
+ *           type: integer
+ *           example: 1
+ *       - name: quality
+ *         in: query
+ *         required: false
+ *         description: Niveau de qualité de l'image retournée
+ *         schema:
+ *           type: string
+ *           enum: [low, medium, high]
+ *           default: medium
+ *     responses:
+ *       200:
+ *         description: Image WebP de la photo de profil
+ *         content:
+ *           image/webp:
+ *             schema:
+ *               type: string
+ *               format: binary
+ *       400:
+ *         description: ID ou qualité invalide
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: Qualité invalide. Valeurs acceptées : low, medium, high.
+ *       401:
+ *         description: Non authentifié
+ *       404:
+ *         description: Utilisateur ou photo introuvable
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: Aucune photo de profil.
+ *       500:
+ *         description: Erreur serveur
+ */
+usersRouter.get('/:id/profile-picture', async (req: Request, res: Response) => { return getProfilePicture(req, res); });
 
 /**
  * @swagger

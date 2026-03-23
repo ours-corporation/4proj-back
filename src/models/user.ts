@@ -81,6 +81,13 @@ export class User extends Model {
     })
     github_id!: string | null;
 
+    // Clé physique de la photo de profil (UUID, stockée dans /app/uploads/{userId}/profile/)
+    @Column({
+        type: DataType.STRING,
+        allowNull: true
+    })
+    profile_picture_key!: string | null;
+
     // --- RELATIONS FICHIERS / DOSSIERS ---
 
     @HasMany(() => Folder)
