@@ -1,7 +1,8 @@
 import {Request, Response} from 'express';
-import { User } from '../models';
+import { User, File, Quota } from '../models';
 import {compareString, hashString} from '../services/hash';
 import ProfilePictureService, { ProfilePictureQuality } from '../services/profilePicture';
+import { Op, fn, col, literal } from 'sequelize';
 
 export const getMe = async (req: Request, res: Response) => {
     try {
@@ -185,6 +186,75 @@ export const deleteProfilePicture = async (req: Request, res: Response) => {
 
         return res.status(204).send();
     } catch (error) {
+        return res.status(500).json({ message: 'Erreur serveur' });
+    }
+};
+
+export const getStorageStats = async (req: Request, res: Response) => {
+    try {
+        const userId = req.user.id;
+
+        const user = await User.findByPk(userId, { include: [Quota] });
+        if (!user) {
+            return res.status(404).json({ message: 'Utilisateur introuvable' });
+        }
+
+        const quotaBytes = user.quota ? Number(user.quota.quota_bytes) : 0;
+        const usedBytes = Number(user.used_bytes);
+        const freeBytes = Math.max(0, quotaBytes - usedBytes);
+
+        // Récupérer les fichiers non supprimés groupés par mime_type
+        const files = await File.findAll({
+            where: { user_id: userId, trashed_at: null },
+            attributes: ['mime_type', [fn('SUM', col('size_bytes')), 'total_bytes']],
+            group: ['mime_type'],
+            raw: true,
+        }) as unknown as { mime_type: string; total_bytes: string }[];
+
+        const categoryBytes = { video: 0, photo: 0, document: 0, other: 0 };
+
+        for (const row of files) {
+            const mime = row.mime_type || '';
+            const bytes = Number(row.total_bytes);
+            if (mime.startsWith('video/')) {
+                categoryBytes.video += bytes;
+            } else if (mime.startsWith('image/')) {
+                categoryBytes.photo += bytes;
+            } else if (
+                mime.startsWith('text/') ||
+                mime === 'application/pdf' ||
+                mime.startsWith('application/vnd.') ||
+                mime === 'application/msword' ||
+                mime === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' ||
+                mime === 'application/vnd.ms-excel' ||
+                mime === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' ||
+                mime === 'application/vnd.ms-powerpoint' ||
+                mime === 'application/vnd.openxmlformats-officedocument.presentationml.presentation'
+            ) {
+                categoryBytes.document += bytes;
+            } else {
+                categoryBytes.other += bytes;
+            }
+        }
+
+        const toPercent = (bytes: number) =>
+            quotaBytes > 0 ? Math.round((bytes / quotaBytes) * 10000) / 100 : 0;
+
+        return res.json({
+            quota_bytes: quotaBytes,
+            used_bytes: usedBytes,
+            free_bytes: freeBytes,
+            used_percent: toPercent(usedBytes),
+            free_percent: toPercent(freeBytes),
+            categories: {
+                video: { bytes: categoryBytes.video, percent: toPercent(categoryBytes.video) },
+                photo: { bytes: categoryBytes.photo, percent: toPercent(categoryBytes.photo) },
+                document: { bytes: categoryBytes.document, percent: toPercent(categoryBytes.document) },
+                other: { bytes: categoryBytes.other, percent: toPercent(categoryBytes.other) },
+            },
+        });
+    } catch (error) {
+        console.error(error);
         return res.status(500).json({ message: 'Erreur serveur' });
     }
 };

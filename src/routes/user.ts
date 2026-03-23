@@ -1,5 +1,5 @@
 import { Router, Request, Response } from 'express';
-import { getMe, updateMe, deleteMe, updatePassword, getUserById, uploadProfilePicture, getProfilePicture, deleteProfilePicture } from "../controllers/user";
+import { getMe, updateMe, deleteMe, updatePassword, getUserById, uploadProfilePicture, getProfilePicture, deleteProfilePicture, getStorageStats } from "../controllers/user";
 import { validate } from '../middleware/validate';
 import {updatePasswordValidatorSchema, updateUserValidatorSchema} from "../validator/user";
 import multer from 'multer';
@@ -85,6 +85,32 @@ const usersRouter = Router();
  *         description: Utilisateur introuvable
  */
 usersRouter.get('/me', async (req: Request, res: Response) => {return getMe(req, res);});
+
+/**
+ * @swagger
+ * /users/me/storage:
+ *   get:
+ *     security:
+ *       - bearerAuth: []
+ *     tags:
+ *       - Users
+ *     summary: Statistiques d'utilisation du stockage
+ *     description: Retourne l'utilisation globale du forfait et la repartition par categorie (video, photo, document, autre) en octets et en pourcentage. Les fichiers dans la corbeille sont exclus.
+ *     responses:
+ *       200:
+ *         description: Statistiques de stockage
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/StorageStats'
+ *       401:
+ *         description: Non authentifie
+ *       404:
+ *         description: Utilisateur introuvable
+ *       500:
+ *         description: Erreur serveur
+ */
+usersRouter.get('/me/storage', async (req: Request, res: Response) => { return getStorageStats(req, res); });
 
 /**
  * @swagger
@@ -468,7 +494,7 @@ usersRouter.get('/me/profile-picture', async (req: Request, res: Response) => {
  *               properties:
  *                 message:
  *                   type: string
- *                   example: Qualité invalide. Valeurs acceptées : low, medium, high.
+ *                   example: "Qualité invalide. Valeurs acceptées : low, medium, high."
  *       401:
  *         description: Non authentifié
  *       404:
