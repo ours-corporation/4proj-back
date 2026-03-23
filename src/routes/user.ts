@@ -1,5 +1,5 @@
 import { Router, Request, Response } from 'express';
-import { getMe, updateMe, deleteMe, updatePassword, getUserById, uploadProfilePicture, getProfilePicture, deleteProfilePicture } from "../controllers/user";
+import { getMe, updateMe, deleteMe, updatePassword, getUserById, uploadProfilePicture, getProfilePicture, deleteProfilePicture, getStorageStats } from "../controllers/user";
 import { validate } from '../middleware/validate';
 import {updatePasswordValidatorSchema, updateUserValidatorSchema} from "../validator/user";
 import multer from 'multer';
@@ -85,6 +85,107 @@ const usersRouter = Router();
  *         description: Utilisateur introuvable
  */
 usersRouter.get('/me', async (req: Request, res: Response) => {return getMe(req, res);});
+
+/**
+ * @swagger
+ * /users/me/storage:
+ *   get:
+ *     security:
+ *       - bearerAuth: []
+ *     tags:
+ *       - Users
+ *     summary: Statistiques d'utilisation du stockage
+ *     description: |
+ *       Retourne l'utilisation globale du forfait ainsi que la répartition par catégorie de fichiers (vidéo, photo, document, autre) en octets et en pourcentage du quota total.
+ *       Les fichiers dans la corbeille ne sont pas comptabilisés.
+ *     responses:
+ *       200:
+ *         description: Statistiques de stockage
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 quota_bytes:
+ *                   type: integer
+ *                   format: int64
+ *                   description: Quota total en octets
+ *                   example: 32212254720
+ *                 used_bytes:
+ *                   type: integer
+ *                   format: int64
+ *                   description: Espace utilisé en octets
+ *                   example: 5368709120
+ *                 free_bytes:
+ *                   type: integer
+ *                   format: int64
+ *                   description: Espace libre en octets
+ *                   example: 26843545600
+ *                 used_percent:
+ *                   type: number
+ *                   format: float
+ *                   description: Pourcentage du quota utilisé
+ *                   example: 16.67
+ *                 free_percent:
+ *                   type: number
+ *                   format: float
+ *                   description: Pourcentage du quota libre
+ *                   example: 83.33
+ *                 categories:
+ *                   type: object
+ *                   properties:
+ *                     video:
+ *                       type: object
+ *                       properties:
+ *                         bytes:
+ *                           type: integer
+ *                           format: int64
+ *                           example: 2147483648
+ *                         percent:
+ *                           type: number
+ *                           format: float
+ *                           example: 6.67
+ *                     photo:
+ *                       type: object
+ *                       properties:
+ *                         bytes:
+ *                           type: integer
+ *                           format: int64
+ *                           example: 1073741824
+ *                         percent:
+ *                           type: number
+ *                           format: float
+ *                           example: 3.33
+ *                     document:
+ *                       type: object
+ *                       properties:
+ *                         bytes:
+ *                           type: integer
+ *                           format: int64
+ *                           example: 2097152
+ *                         percent:
+ *                           type: number
+ *                           format: float
+ *                           example: 0.01
+ *                     other:
+ *                       type: object
+ *                       properties:
+ *                         bytes:
+ *                           type: integer
+ *                           format: int64
+ *                           example: 524288
+ *                         percent:
+ *                           type: number
+ *                           format: float
+ *                           example: 0.0
+ *       401:
+ *         description: Non authentifié
+ *       404:
+ *         description: Utilisateur introuvable
+ *       500:
+ *         description: Erreur serveur
+ */
+usersRouter.get('/me/storage', async (req: Request, res: Response) => { return getStorageStats(req, res); });
 
 /**
  * @swagger
