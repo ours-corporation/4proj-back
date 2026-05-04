@@ -1,6 +1,13 @@
 import { Request, Response } from 'express';
 import fs from 'fs';
 import FileService from '../services/file';
+import { User } from '../models';
+import { emitToUser } from '../services/socket';
+
+const emitStorageUpdate = async (userId: number) => {
+    const user = await User.findByPk(userId, { attributes: ['used_bytes'] });
+    if (user) emitToUser(userId, 'storage:updated', { used_bytes: Number(user.used_bytes) });
+};
 
 export const uploadFile = async (req: Request, res: Response) => {
     try {
@@ -14,6 +21,8 @@ export const uploadFile = async (req: Request, res: Response) => {
         const newFile = await FileService.uploadSingleFile(req.file, userId, folderId);
 
         res.status(201).json(newFile);
+        emitToUser(userId, 'file:created', newFile);
+        emitStorageUpdate(userId);
     } catch (error: any) {
         console.error(error);
         if (error.message.includes("quota")) {
@@ -70,6 +79,7 @@ export const updateFile = async (req: Request, res: Response) => {
         const updatedFile = await FileService.updateFile(id, req.user.id, { name });
 
         res.json(updatedFile);
+        emitToUser(req.user.id, 'file:updated', updatedFile);
     } catch (error: any) {
         console.error(error);
         if (error.message.includes("interdit")) {
@@ -91,6 +101,7 @@ export const moveFile = async (req: Request, res: Response) => {
         const movedFile = await FileService.moveFile(fileId, userId, folder_id);
 
         res.json(movedFile);
+        emitToUser(userId, 'file:updated', movedFile);
     } catch (error: any) {
         console.error(error);
         if (error.message.includes("corbeille")) {
@@ -122,6 +133,8 @@ export const uploadFiles = async (req: Request, res: Response) => {
             message: `${uploadedFiles.length} fichier(s) uploadé(s) avec succès.`,
             files: uploadedFiles
         });
+        uploadedFiles.forEach(f => emitToUser(userId, 'file:created', f));
+        emitStorageUpdate(userId);
 
     } catch (error: any) {
         console.error("Erreur d'upload :", error);
@@ -140,6 +153,8 @@ export const copyFile = async (req: Request, res: Response) => {
         const copiedFile = await FileService.copyFile(fileId, userId);
 
         res.status(201).json(copiedFile);
+        emitToUser(userId, 'file:created', copiedFile);
+        emitStorageUpdate(userId);
     } catch (error: any) {
         console.error(error);
         if (error.message.includes("corbeille")) {
@@ -245,6 +260,7 @@ export const moveMultipleItems = async (req: Request, res: Response) => {
         const result = await FileService.moveMultipleItems(items, userId, destination_folder_id);
 
         res.json(result);
+        emitToUser(userId, 'items:moved', { items, destination_folder_id });
     } catch (error: any) {
         console.error(error);
         res.status(500).json({ message: "Erreur serveur" });

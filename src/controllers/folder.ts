@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import FolderService from '../services/folder';
 import { Folder } from '../models';
+import { emitToUser } from '../services/socket';
 
 export const createFolder = async (req: Request, res: Response) => {
     try {
@@ -10,6 +11,7 @@ export const createFolder = async (req: Request, res: Response) => {
 
         const newFolder = await FolderService.createFolder(name, userId, parent_id);
         res.status(201).json(newFolder);
+        emitToUser(userId, 'folder:created', newFolder);
 
     } catch (error: any) {
         console.error(error);
@@ -52,6 +54,7 @@ export const renameFolder = async (req: Request, res: Response) => {
         const folder = await FolderService.renameFolder(folderId, userId, name);
 
         res.json(folder);
+        emitToUser(userId, 'folder:updated', folder);
     } catch (error: any) {
         console.error(error);
         if (error.message.includes("introuvable")) return res.status(404).json({ message: error.message });
@@ -71,6 +74,7 @@ export const copyFolder = async (req: Request, res: Response) => {
         const copiedFolder = await FolderService.copyFolder(folderId, userId);
 
         res.status(201).json(copiedFolder);
+        emitToUser(userId, 'folder:created', copiedFolder);
     } catch (error: any) {
         console.error(error);
         if (error.message.includes("corbeille")) {

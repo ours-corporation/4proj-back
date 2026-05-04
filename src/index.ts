@@ -1,5 +1,6 @@
-import 'reflect-metadata'; 
+import 'reflect-metadata';
 import './config/sequelize';
+import http from 'http';
 import express, { Request, Response } from 'express';
 import dotenv from 'dotenv';
 import cors from 'cors';
@@ -15,6 +16,7 @@ import shareRouter from './routes/share';
 import publicRouter from './routes/public';
 import searchRouter from './routes/search';
 import itemsRouter from './routes/items';
+import { initSocket } from './services/socket';
 
 dotenv.config();
 
@@ -68,7 +70,10 @@ app.use((req: Request, res: Response) => {
     });
 });
 
-app.listen({ port: PORT, host: HOST }, () => {
+const httpServer = http.createServer(app);
+initSocket(httpServer, supportedOrigins);
+
+httpServer.listen({ port: PORT, host: HOST }, () => {
     console.log(`Server running at http://${HOST}:${PORT}`);
 });
 
