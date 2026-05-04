@@ -3,6 +3,7 @@ import fs from 'fs';
 import path from 'path';
 import ShareService from '../services/share';
 import FolderService from '../services/folder';
+import { emitToUser } from '../services/socket';
 
 const UPLOAD_ROOT = '/app/uploads';
 
@@ -42,6 +43,8 @@ export const createPrivateShare = async (req: Request, res: Response) => {
         );
 
         res.status(201).json(share);
+        emitToUser(ownerId, 'share:created', share);
+        if (share.recipient_id) emitToUser(share.recipient_id, 'share:received', share);
     } catch (error: any) {
         console.error(error);
         res.status(400).json({ message: error.message });
@@ -86,6 +89,7 @@ export const revokeShare = async (req: Request, res: Response) => {
         await ShareService.revokeShare(ownerId, shareId);
 
         res.json({ message: "Partage supprimé avec succès." });
+        emitToUser(ownerId, 'share:revoked', { id: shareId });
     } catch (error: any) {
         console.error(error);
         res.status(400).json({ message: error.message });
@@ -136,6 +140,7 @@ export const updateShare = async (req: Request, res: Response) => {
         });
 
         res.json(share);
+        emitToUser(ownerId, 'share:updated', share);
     } catch (error: any) {
         const status = error.message.includes('introuvable') ? 404 : 400;
         res.status(status).json({ message: error.message });
