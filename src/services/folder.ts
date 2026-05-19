@@ -76,7 +76,7 @@ class FolderService {
         await this.createZipStream(folderId, folder.name, outputStream);
     }
 
-    async getAllFilesInFolder(folderId: number, currentPath: string): Promise<{ physicalPath: string, archivePath: string }[]> {
+    public async getAllFilesInFolder(folderId: number, currentPath: string): Promise<{ physicalPath: string, archivePath: string }[]> {
         let results: { physicalPath: string, archivePath: string }[] = [];
 
         const files = await File.findAll({ where: { folder_id: folderId, trashed_at: null } });
