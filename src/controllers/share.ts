@@ -205,6 +205,11 @@ export const downloadPublicFolder = async (req: Request, res: Response) => {
 
         const folder = shareInfo.data as any;
 
+        const files = await FolderService.getAllFilesInFolder(folder.id, folder.name);
+        if (files.length === 0) {
+            return res.status(400).json({ message: "Ce dossier est vide." });
+        }
+
         res.setHeader('Content-Type', 'application/zip');
         res.setHeader('Content-Disposition', `attachment; filename="${encodeURIComponent(folder.name)}.zip"`);
 
