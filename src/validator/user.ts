@@ -8,7 +8,9 @@ export const updateUserValidatorSchema = z.object({
                  .regex(/^[a-zA-Z0-9_-]+$/, "Username can only contain letters, numbers, underscores (_) and hyphens (-)")
                  .optional(),
         email: z.string({ message: "Email is required" })
-                 .email("Invalid email format"),
+                 .email("Invalid email format")
+                 .optional(),
+        password: z.string().optional(),
     })
 });
 
