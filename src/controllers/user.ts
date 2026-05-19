@@ -29,21 +29,27 @@ export const getMe = async (req: Request, res: Response) => {
 export const updateMe = async (req: Request, res: Response) => {
     try {
         const userId = req.user.id;
-        const { email, username } = req.body;
-
-        const actualEmail = (await User.findByPk(userId))?.email;
-        if (!actualEmail) {
-            return res.status(404).json({ message: 'Utilisateur introuvable' });
-        }
+        const { email, username, password } = req.body;
 
         const user = await User.findByPk(userId);
         if (!user) {
             return res.status(404).json({ message: 'Utilisateur introuvable' });
         }
 
-        if (email) {
+        if (email && email !== user.email) {
+            if (!password) {
+                return res.status(403).json({ message: 'Le mot de passe est requis pour modifier l\'adresse email.' });
+            }
+            if (!user.password) {
+                return res.status(400).json({ message: 'Aucun mot de passe défini sur ce compte.' });
+            }
+            const ok = await compareString(password, user.password);
+            if (!ok) {
+                return res.status(403).json({ message: 'Mot de passe incorrect.' });
+            }
             user.email = email;
         }
+
         if (username) {
             user.username = username;
         }
