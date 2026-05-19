@@ -264,10 +264,13 @@ class FileService {
             await fs.promises.copyFile(file.path, targetPath);
             await fs.promises.unlink(file.path);
 
-            const rawExt = path.extname(file.originalname);
+            // busboy décode le filename du header Content-Disposition en latin1 par défaut,
+            // mais les clients envoient des bytes UTF-8 → re-encoder pour retrouver les accents.
+            const decodedName = Buffer.from(file.originalname, 'latin1').toString('utf8');
+            const rawExt = path.extname(decodedName);
             const baseName = rawExt
-                ? path.basename(file.originalname, rawExt)
-                : file.originalname;
+                ? path.basename(decodedName, rawExt)
+                : decodedName;
             const extension = rawExt ? rawExt.slice(1) : null;
 
             const newFile = await File.create({
