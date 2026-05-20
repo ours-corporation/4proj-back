@@ -140,19 +140,36 @@ export const register = async (req: Request, res: Response) => {
     }
 };
 
+const allowedOrigins = process.env.APP_URL
+    ? process.env.APP_URL.split(",").map((u) => u.trim())
+    : ["http://localhost:3000"];
+
+function isRedirectUriAllowed(redirectUri: string): boolean {
+    try {
+        const { origin } = new URL(redirectUri);
+        return allowedOrigins.some((allowed) => allowed === origin);
+    } catch {
+        return false;
+    }
+}
+
 export const authWithGoogle = async (req: Request, res: Response) => {
     try {
-        const { code } = req.body;
+        const { code, redirect_uri } = req.body;
 
         if (!code) {
             return res.status(400).json({ error: "Authorization code is required" });
+        }
+
+        if (!redirect_uri || !isRedirectUriAllowed(redirect_uri)) {
+            return res.status(400).json({ error: "redirect_uri non autorisé" });
         }
 
         const params = new URLSearchParams({
             code,
             client_id: process.env.GOOGLE_CLIENT_ID!,
             client_secret: process.env.GOOGLE_CLIENT_SECRET!,
-            redirect_uri: process.env.GOOGLE_REDIRECT_URI!,
+            redirect_uri,
             grant_type: "authorization_code",
         });
 
@@ -218,9 +235,13 @@ export const authWithGoogle = async (req: Request, res: Response) => {
 
 export const authWithGithub = async (req: Request, res: Response) => {
     try {
-        const { code } = req.body;
+        const { code, redirect_uri } = req.body;
         if (!code) {
             return res.status(400).json({ error: "Authorization code is required" });
+        }
+
+        if (!redirect_uri || !isRedirectUriAllowed(redirect_uri)) {
+            return res.status(400).json({ error: "redirect_uri non autorisé" });
         }
 
         const rep = await fetch("https://github.com/login/oauth/access_token", {
@@ -233,7 +254,7 @@ export const authWithGithub = async (req: Request, res: Response) => {
                 client_id: process.env.GITHUB_CLIENT_ID!,
                 client_secret: process.env.GITHUB_CLIENT_SECRET!,
                 code,
-                redirect_uri: process.env.GITHUB_REDIRECT_URI!,
+                redirect_uri,
             }).toString(),
         });
 
