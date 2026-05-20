@@ -1,4 +1,5 @@
 import { Request, Response } from 'express';
+import { UniqueConstraintError } from 'sequelize';
 import { User, Quota } from '../models';
 import { compareString, hashString } from '../services/hash';
 import { generateAccessToken, generateRefreshToken, verifyRefreshToken } from '../services/jwt';
@@ -132,7 +133,10 @@ export const register = async (req: Request, res: Response) => {
         res.status(201).json({ user });
 
     } catch (error) {
-        res.status(500).json({ error: 'Internal Server Error' });
+        if (error instanceof UniqueConstraintError) {
+            return res.status(409).json({ error: 'Un compte existe déjà avec cet email.' });
+        }
+        return res.status(500).json({ error: 'Internal Server Error' });
     }
 };
 
