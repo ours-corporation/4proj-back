@@ -1,5 +1,5 @@
 import { Router, Request, Response } from 'express';
-import {register, login, refresh, logout, authWithGoogle, authWithGithub, verifyEmail} from "../controllers/auth";
+import {register, login, refresh, logout, authWithGoogle, authWithGithub, verifyEmail, resendVerification, forgotPassword, resetPassword} from "../controllers/auth";
 import {validate} from "../middleware/validate";
 import {loginValidatorSchema, registerValidatorSchema} from "../validator/auth";
 
@@ -363,6 +363,18 @@ authRouter.post('/auth/github', async (req: Request, res: Response) => {
  */
 authRouter.get('/verify-email', async (req: Request, res: Response) => {
     return verifyEmail(req, res);
+});
+
+authRouter.post('/resend-verification', async (req: Request, res: Response) => {
+    return resendVerification(req, res);
+});
+
+authRouter.post('/forgot-password', async (req: Request, res: Response) => {
+    return forgotPassword(req, res);
+});
+
+authRouter.post('/reset-password', async (req: Request, res: Response) => {
+    return resetPassword(req, res);
 });
 
 export default authRouter;
