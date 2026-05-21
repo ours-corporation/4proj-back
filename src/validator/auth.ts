@@ -15,6 +15,13 @@ export const loginValidatorSchema = z.object({
     })
 });
 
+export const passwordSchema = z
+    .string({ message: "Le mot de passe est obligatoire" })
+    .min(12, "Le mot de passe doit contenir au moins 12 caractères")
+    .refine((v) => /[A-Z]/.test(v), { message: "Le mot de passe doit contenir au moins une majuscule" })
+    .refine((v) => /[0-9]/.test(v), { message: "Le mot de passe doit contenir au moins un chiffre" })
+    .refine((v) => /[^A-Za-z0-9]/.test(v), { message: "Le mot de passe doit contenir au moins un caractère spécial" });
+
 export const registerValidatorSchema = z.object({
     body: z.object({
         username: z
@@ -33,6 +40,6 @@ export const registerValidatorSchema = z.object({
 
         email: z.string({ message: "L'email est obligatoire" })
                  .email("Le format de l'email est invalide"),
-        password: z.string({ message: "Le mot de passe est obligatoire" })
+        password: passwordSchema,
     })
 })

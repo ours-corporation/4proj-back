@@ -2,7 +2,8 @@ import { Request, Response } from 'express';
 import { UniqueConstraintError } from 'sequelize';
 import { User, Quota } from '../models';
 import { compareString, hashString } from '../services/hash';
-import { generateAccessToken, generateRefreshToken, verifyRefreshToken } from '../services/jwt';
+import { generateAccessToken, generateRefreshToken, verifyRefreshToken, generateVerificationToken, verifyVerificationToken } from '../services/jwt';
+import { sendVerificationEmail } from '../services/mail';
 import jwt from "jsonwebtoken";
 
 export const login = async (req: Request, res: Response) => {
@@ -16,6 +17,10 @@ export const login = async (req: Request, res: Response) => {
 
         const ok = await compareString(password, user.password);
         if (!ok) return res.status(401).json({ error: 'Invalid credentials' });
+
+        if (!user.email_verified) {
+            return res.status(403).json({ error: 'Veuillez vérifier votre adresse email avant de vous connecter.' });
+        }
 
         const accessToken = generateAccessToken({ id: user.id, email: user.email, username: user.username });
         const refreshToken = generateRefreshToken({ id: user.id });
@@ -123,20 +128,61 @@ export const register = async (req: Request, res: Response) => {
             email,
             password: hashedPassword,
             quota_id: 1,
+            email_verified: false,
         });
 
-        const user = {
-            id: newUser.id,
-            email: newUser.email,
-        };
+        const token = generateVerificationToken(newUser.id);
+        const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+        const verificationUrl = `${frontendUrl}/verify-email?token=${token}`;
 
-        res.status(201).json({ user });
+        try {
+            await sendVerificationEmail(email, verificationUrl);
+        } catch (mailErr) {
+            console.error('Erreur envoi email de vérification :', mailErr);
+        }
+
+        return res.status(201).json({
+            user: { id: newUser.id, email: newUser.email },
+            message: 'Compte créé. Vérifiez votre email pour activer votre compte.',
+        });
+
 
     } catch (error) {
         if (error instanceof UniqueConstraintError) {
             return res.status(409).json({ error: 'Un compte existe déjà avec cet email.' });
         }
         return res.status(500).json({ error: 'Internal Server Error' });
+    }
+};
+
+export const verifyEmail = async (req: Request, res: Response) => {
+    const { token } = req.query;
+
+    if (!token || typeof token !== 'string') {
+        return res.status(400).json({ error: 'Token manquant.' });
+    }
+
+    try {
+        const payload = verifyVerificationToken(token);
+
+        if (payload.type !== 'email-verification') {
+            return res.status(400).json({ error: 'Token invalide.' });
+        }
+
+        const user = await User.findByPk(payload.id);
+        if (!user) {
+            return res.status(404).json({ error: 'Utilisateur introuvable.' });
+        }
+
+        if (user.email_verified) {
+            return res.status(200).json({ already: true, message: 'Email déjà vérifié.' });
+        }
+
+        await user.update({ email_verified: true });
+
+        return res.status(200).json({ success: true, message: 'Email vérifié avec succès.' });
+    } catch {
+        return res.status(400).json({ error: 'Token expiré ou invalide.' });
     }
 };
 
@@ -224,6 +270,7 @@ export const authWithGoogle = async (req: Request, res: Response) => {
                 email,
                 google_id,
                 quota_id: 1,
+                email_verified: true,
             });
         }
 
@@ -315,6 +362,7 @@ export const authWithGithub = async (req: Request, res: Response) => {
                 email,
                 github_id,
                 quota_id: 1,
+                email_verified: true,
             });
         }
 

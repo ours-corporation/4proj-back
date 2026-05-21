@@ -81,6 +81,14 @@ export class User extends Model {
     })
     github_id!: string | null;
 
+    @Default(false)
+    @Column({
+        type: DataType.BOOLEAN,
+        allowNull: false,
+        field: 'email_verified'
+    })
+    email_verified!: boolean;
+
     // Clé physique de la photo de profil (UUID, stockée dans /app/uploads/{userId}/profile/)
     @Column({
         type: DataType.STRING,

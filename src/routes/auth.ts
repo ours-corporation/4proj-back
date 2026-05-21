@@ -1,5 +1,5 @@
 import { Router, Request, Response } from 'express';
-import {register, login, refresh, logout, authWithGoogle, authWithGithub} from "../controllers/auth";
+import {register, login, refresh, logout, authWithGoogle, authWithGithub, verifyEmail} from "../controllers/auth";
 import {validate} from "../middleware/validate";
 import {loginValidatorSchema, registerValidatorSchema} from "../validator/auth";
 
@@ -340,6 +340,29 @@ authRouter.post('/auth/google', async (req: Request, res: Response) => {
  */
 authRouter.post('/auth/github', async (req: Request, res: Response) => {
     return authWithGithub(req, res);
+});
+
+/**
+ * @swagger
+ * /verify-email:
+ *   get:
+ *     tags:
+ *       - Auth
+ *     summary: Vérification de l'adresse email
+ *     description: Valide le token reçu par email et active le compte utilisateur. Redirige vers le frontend.
+ *     parameters:
+ *       - in: query
+ *         name: token
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Token JWT de vérification (valide 24h)
+ *     responses:
+ *       302:
+ *         description: Redirection vers le frontend avec le résultat (?verified=true|false|already)
+ */
+authRouter.get('/verify-email', async (req: Request, res: Response) => {
+    return verifyEmail(req, res);
 });
 
 export default authRouter;
