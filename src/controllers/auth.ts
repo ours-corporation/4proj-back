@@ -2,8 +2,8 @@ import { Request, Response } from 'express';
 import { UniqueConstraintError } from 'sequelize';
 import { User, Quota } from '../models';
 import { compareString, hashString } from '../services/hash';
-import { generateAccessToken, generateRefreshToken, verifyRefreshToken, generateVerificationToken, verifyVerificationToken } from '../services/jwt';
-import { sendVerificationEmail } from '../services/mail';
+import { generateAccessToken, generateRefreshToken, verifyRefreshToken, generateVerificationToken, verifyVerificationToken, generateResetToken, verifyResetToken } from '../services/jwt';
+import { sendVerificationEmail, sendPasswordResetEmail } from '../services/mail';
 import jwt from "jsonwebtoken";
 
 export const login = async (req: Request, res: Response) => {
@@ -155,6 +155,33 @@ export const register = async (req: Request, res: Response) => {
     }
 };
 
+export const resendVerification = async (req: Request, res: Response) => {
+    const { email } = req.body;
+
+    if (!email || typeof email !== 'string') {
+        return res.status(400).json({ error: 'Email requis.' });
+    }
+
+    // Réponse identique que l'email existe ou non (évite l'énumération)
+    const user = await User.findOne({ where: { email } });
+
+    if (!user || user.email_verified || user.google_id || user.github_id) {
+        return res.status(200).json({ message: 'Si un compte non vérifié existe, un email a été envoyé.' });
+    }
+
+    const token = generateVerificationToken(user.id);
+    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+    const verificationUrl = `${frontendUrl}/verify-email?token=${token}`;
+
+    try {
+        await sendVerificationEmail(email, verificationUrl);
+    } catch (mailErr) {
+        console.error('Erreur renvoi email de vérification :', mailErr);
+    }
+
+    return res.status(200).json({ message: 'Si un compte non vérifié existe, un email a été envoyé.' });
+};
+
 export const verifyEmail = async (req: Request, res: Response) => {
     const { token } = req.query;
 
@@ -181,6 +208,79 @@ export const verifyEmail = async (req: Request, res: Response) => {
         await user.update({ email_verified: true });
 
         return res.status(200).json({ success: true, message: 'Email vérifié avec succès.' });
+    } catch {
+        return res.status(400).json({ error: 'Token expiré ou invalide.' });
+    }
+};
+
+export const forgotPassword = async (req: Request, res: Response) => {
+    const { email } = req.body;
+
+    // Réponse générique pour éviter l'énumération des comptes
+    const genericResponse = { message: 'Si un compte existe avec cet email, un lien de réinitialisation a été envoyé.' };
+
+    if (!email || typeof email !== 'string') {
+        return res.status(400).json({ error: 'Email requis.' });
+    }
+
+    try {
+        const user = await User.findOne({ where: { email } });
+
+        // Compte inexistant — réponse générique (évite l'énumération)
+        if (!user) {
+            return res.status(200).json(genericResponse);
+        }
+
+        // Compte OAuth uniquement — on informe l'utilisateur
+        if (user.google_id && !user.password) {
+            return res.status(200).json({ oauthOnly: true, provider: 'google' });
+        }
+        if (user.github_id && !user.password) {
+            return res.status(200).json({ oauthOnly: true, provider: 'github' });
+        }
+
+        const token = generateResetToken(user.id);
+        const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+        const resetUrl = `${frontendUrl}/reset-password?token=${token}`;
+
+        try {
+            await sendPasswordResetEmail(email, resetUrl);
+        } catch (mailErr) {
+            console.error('Erreur envoi email de réinitialisation :', mailErr);
+        }
+
+        return res.status(200).json(genericResponse);
+    } catch {
+        return res.status(500).json({ error: 'Internal Server Error' });
+    }
+};
+
+export const resetPassword = async (req: Request, res: Response) => {
+    const { token, password } = req.body;
+
+    if (!token || typeof token !== 'string') {
+        return res.status(400).json({ error: 'Token manquant.' });
+    }
+    if (!password || typeof password !== 'string' || password.length < 8) {
+        return res.status(400).json({ error: 'Le mot de passe doit contenir au moins 8 caractères.' });
+    }
+
+    try {
+        const payload = verifyResetToken(token);
+
+        if (payload.type !== 'password-reset') {
+            return res.status(400).json({ error: 'Token invalide.' });
+        }
+
+        const user = await User.findByPk(payload.id);
+        if (!user) {
+            return res.status(404).json({ error: 'Utilisateur introuvable.' });
+        }
+
+        const hashedPassword = await hashString(password);
+        await user.update({ password: hashedPassword, refresh_token: null });
+
+        return res.status(200).json({ success: true, message: 'Mot de passe réinitialisé avec succès.' });
     } catch {
         return res.status(400).json({ error: 'Token expiré ou invalide.' });
     }
