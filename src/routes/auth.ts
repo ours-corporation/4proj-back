@@ -365,14 +365,125 @@ authRouter.get('/verify-email', async (req: Request, res: Response) => {
     return verifyEmail(req, res);
 });
 
+/**
+ * @swagger
+ * /resend-verification:
+ *   post:
+ *     tags:
+ *       - Auth
+ *     summary: Renvoyer l'email de vérification
+ *     description: Envoie un nouvel email de vérification à l'adresse associée au compte. Utile si le premier email n'a pas été reçu ou a expiré.
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - email
+ *             properties:
+ *               email:
+ *                 type: string
+ *                 format: email
+ *                 example: utilisateur@exemple.fr
+ *     responses:
+ *       200:
+ *         description: Email de vérification renvoyé avec succès.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *       400:
+ *         description: Email manquant ou compte déjà vérifié.
+ *       404:
+ *         description: Aucun compte trouvé pour cet email.
+ */
 authRouter.post('/resend-verification', async (req: Request, res: Response) => {
     return resendVerification(req, res);
 });
 
+/**
+ * @swagger
+ * /forgot-password:
+ *   post:
+ *     tags:
+ *       - Auth
+ *     summary: Demander une réinitialisation de mot de passe
+ *     description: Envoie un email contenant un lien de réinitialisation de mot de passe (valide 1h).
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - email
+ *             properties:
+ *               email:
+ *                 type: string
+ *                 format: email
+ *                 example: utilisateur@exemple.fr
+ *     responses:
+ *       200:
+ *         description: Email de réinitialisation envoyé (même réponse si l'email n'existe pas, pour ne pas divulguer les comptes).
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ */
 authRouter.post('/forgot-password', async (req: Request, res: Response) => {
     return forgotPassword(req, res);
 });
 
+/**
+ * @swagger
+ * /reset-password:
+ *   post:
+ *     tags:
+ *       - Auth
+ *     summary: Réinitialiser le mot de passe
+ *     description: |
+ *       Valide le token de réinitialisation (reçu par email) et met à jour le mot de passe.
+ *       Le token est à usage unique et expire après 1h.
+ *       Règles du mot de passe : 12 caractères minimum, au moins une majuscule, un chiffre et un caractère spécial.
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - token
+ *               - password
+ *             properties:
+ *               token:
+ *                 type: string
+ *                 description: Token de réinitialisation reçu par email.
+ *               password:
+ *                 type: string
+ *                 description: Nouveau mot de passe.
+ *                 example: "MonNouveauMdp1!"
+ *     responses:
+ *       200:
+ *         description: Mot de passe réinitialisé avec succès.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *       400:
+ *         description: Token manquant, expiré ou mot de passe invalide.
+ *       404:
+ *         description: Token introuvable.
+ */
 authRouter.post('/reset-password', async (req: Request, res: Response) => {
     return resetPassword(req, res);
 });
