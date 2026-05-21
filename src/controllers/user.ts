@@ -3,6 +3,7 @@ import { User, File, Quota } from '../models';
 import {compareString, hashString} from '../services/hash';
 import ProfilePictureService, { ProfilePictureQuality } from '../services/profilePicture';
 import { Op, fn, col, literal } from 'sequelize';
+import { buildGdprExport } from '../services/gdprExport';
 
 export const getMe = async (req: Request, res: Response) => {
     try {
@@ -259,6 +260,18 @@ export const getStorageStats = async (req: Request, res: Response) => {
                 other: { bytes: categoryBytes.other, percent: toPercent(categoryBytes.other) },
             },
         });
+    } catch (error) {
+        console.error(error);
+        return res.status(500).json({ message: 'Erreur serveur' });
+    }
+};
+
+export const getGdprExport = async (req: Request, res: Response) => {
+    try {
+        const userId = req.user.id;
+        const data = await buildGdprExport(userId);
+        res.setHeader('Content-Disposition', `attachment; filename="supfile-data-export-${userId}.json"`);
+        return res.json(data);
     } catch (error) {
         console.error(error);
         return res.status(500).json({ message: 'Erreur serveur' });
