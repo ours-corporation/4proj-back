@@ -1,5 +1,5 @@
 import { Router, Request, Response } from 'express';
-import { getMe, updateMe, deleteMe, updatePassword, getUserById, uploadProfilePicture, getProfilePicture, deleteProfilePicture, getStorageStats } from "../controllers/user";
+import { getMe, updateMe, deleteMe, updatePassword, getUserById, uploadProfilePicture, getProfilePicture, deleteProfilePicture, getStorageStats, getGdprExport } from "../controllers/user";
 import { validate } from '../middleware/validate';
 import {updatePasswordValidatorSchema, updateUserValidatorSchema} from "../validator/user";
 import multer from 'multer';
@@ -511,6 +511,96 @@ usersRouter.get('/me/profile-picture', async (req: Request, res: Response) => {
  *         description: Erreur serveur
  */
 usersRouter.get('/:id/profile-picture', async (req: Request, res: Response) => { return getProfilePicture(req, res); });
+
+/**
+ * @swagger
+ * /users/me/data-export:
+ *   get:
+ *     security:
+ *       - bearerAuth: []
+ *     tags:
+ *       - Users
+ *     summary: Export RGPD des données personnelles
+ *     description: |
+ *       Retourne l'intégralité des données personnelles détenues sur l'utilisateur
+ *       connecté, conformément à l'article 20 du RGPD (droit à la portabilité).
+ *
+ *       Le JSON inclut :
+ *       - **account** : identité, méthodes d'authentification, dates de création
+ *       - **quota** : nom du forfait, capacité totale, octets utilisés
+ *       - **files** : liste de tous les fichiers actifs et fichiers en corbeille
+ *       - **folders** : arborescence complète des dossiers (liste plate)
+ *       - **shares.sent** : partages créés par l'utilisateur (publics et privés)
+ *       - **shares.received** : partages reçus d'autres utilisateurs
+ *
+ *       Les données sensibles sont exclues : hash du mot de passe, refresh token,
+ *       identifiants OAuth, hash des mots de passe de partage.
+ *
+ *       La réponse est servie avec un header `Content-Disposition: attachment`
+ *       pour déclencher le téléchargement direct depuis un navigateur.
+ *     responses:
+ *       200:
+ *         description: Export JSON des données personnelles
+ *         headers:
+ *           Content-Disposition:
+ *             schema:
+ *               type: string
+ *               example: attachment; filename="supfile-data-export-1.json"
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 exportedAt:
+ *                   type: string
+ *                   format: date-time
+ *                 account:
+ *                   type: object
+ *                   properties:
+ *                     id: { type: integer }
+ *                     username: { type: string }
+ *                     email: { type: string }
+ *                     emailVerified: { type: boolean }
+ *                     authMethods:
+ *                       type: array
+ *                       items: { type: string, enum: [password, google, github] }
+ *                     hasProfilePicture: { type: boolean }
+ *                     createdAt: { type: string, format: date-time }
+ *                     updatedAt: { type: string, format: date-time }
+ *                 quota:
+ *                   type: object
+ *                   nullable: true
+ *                   properties:
+ *                     plan: { type: string }
+ *                     quotaBytes: { type: integer }
+ *                     usedBytes: { type: integer }
+ *                 files:
+ *                   type: object
+ *                   properties:
+ *                     active:
+ *                       type: array
+ *                       items: { type: object }
+ *                     trashed:
+ *                       type: array
+ *                       items: { type: object }
+ *                 folders:
+ *                   type: array
+ *                   items: { type: object }
+ *                 shares:
+ *                   type: object
+ *                   properties:
+ *                     sent:
+ *                       type: array
+ *                       items: { type: object }
+ *                     received:
+ *                       type: array
+ *                       items: { type: object }
+ *       401:
+ *         description: Non authentifié
+ *       500:
+ *         description: Erreur serveur
+ */
+usersRouter.get('/me/data-export', async (req: Request, res: Response) => { return getGdprExport(req, res); });
 
 /**
  * @swagger
