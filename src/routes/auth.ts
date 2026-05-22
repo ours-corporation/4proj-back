@@ -349,7 +349,7 @@ authRouter.post('/auth/github', async (req: Request, res: Response) => {
  *     tags:
  *       - Auth
  *     summary: Vérification de l'adresse email
- *     description: Valide le token JWT reçu par email et active le compte utilisateur.
+ *     description: Valide le token reçu par email et active le compte utilisateur. Redirige vers le frontend.
  *     parameters:
  *       - in: query
  *         name: token
@@ -405,6 +405,42 @@ authRouter.get('/verify-email', async (req: Request, res: Response) => {
  *   post:
  *     tags:
  *       - Auth
+ *     summary: Renvoyer l'email de vérification
+ *     description: Envoie un nouvel email de vérification à l'adresse associée au compte. Utile si le premier email n'a pas été reçu ou a expiré.
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - email
+ *             properties:
+ *               email:
+ *                 type: string
+ *                 format: email
+ *                 example: utilisateur@exemple.fr
+ *     responses:
+ *       200:
+ *         description: Email de vérification renvoyé avec succès.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *       400:
+ *         description: Email manquant ou compte déjà vérifié.
+ *       404:
+ *         description: Aucun compte trouvé pour cet email.
+ */
+/**
+ * @swagger
+ * /resend-verification:
+ *   post:
+ *     tags:
+ *       - Auth
  *     summary: Renvoi de l'email de vérification
  *     description: >
  *       Génère un nouveau token et renvoie l'email de vérification.
@@ -454,11 +490,8 @@ authRouter.post('/resend-verification', async (req: Request, res: Response) => {
  *   post:
  *     tags:
  *       - Auth
- *     summary: Demande de réinitialisation du mot de passe
- *     description: >
- *       Envoie un lien de réinitialisation (valable 1h) à l'adresse email fournie.
- *       La réponse est générique pour éviter l'énumération des comptes.
- *       Si le compte est lié à Google ou GitHub (sans mot de passe), retourne `oauthOnly: true`.
+ *     summary: Demander une réinitialisation de mot de passe
+ *     description: Envoie un email contenant un lien de réinitialisation de mot de passe (valide 1h).
  *     requestBody:
  *       required: true
  *       content:
@@ -470,38 +503,18 @@ authRouter.post('/resend-verification', async (req: Request, res: Response) => {
  *             properties:
  *               email:
  *                 type: string
- *                 example: utilisateur@exemple.com
+ *                 format: email
+ *                 example: utilisateur@exemple.fr
  *     responses:
  *       200:
- *         description: Réponse générique ou indication de compte OAuth.
- *         content:
- *           application/json:
- *             schema:
- *               oneOf:
- *                 - type: object
- *                   properties:
- *                     message:
- *                       type: string
- *                       example: Si un compte existe avec cet email, un lien de réinitialisation a été envoyé.
- *                 - type: object
- *                   properties:
- *                     oauthOnly:
- *                       type: boolean
- *                       example: true
- *                     provider:
- *                       type: string
- *                       enum: [google, github]
- *                       example: google
- *       400:
- *         description: Email manquant.
+ *         description: Email de réinitialisation envoyé (même réponse si l'email n'existe pas, pour ne pas divulguer les comptes).
  *         content:
  *           application/json:
  *             schema:
  *               type: object
  *               properties:
- *                 error:
+ *                 message:
  *                   type: string
- *                   example: Email requis.
  */
 authRouter.post('/forgot-password', async (req: Request, res: Response) => {
     return forgotPassword(req, res);

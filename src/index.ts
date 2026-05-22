@@ -29,9 +29,7 @@ const apiRouter = express.Router();
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-const supportedOrigins = process.env.APP_URL
-    ? process.env.APP_URL.split(",")
-    : ["http://localhost:3000", "http://localhost:5555"];
+const supportedOrigins = (process.env.APP_URL ?? '').split(',').map((u) => u.trim()).filter(Boolean);
 
 app.use(cors({
     origin: supportedOrigins,
@@ -43,7 +41,7 @@ app.use(cors({
 app.use(cookieParser());
 
 
-apiRouter.get('/status', (req: Request, res: Response) => {
+apiRouter.get('/status', (_req: Request, res: Response) => {
     res.json({ status: 'OK', timestamp: new Date().toISOString() });
 });
 

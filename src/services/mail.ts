@@ -1,8 +1,8 @@
 import nodemailer from 'nodemailer';
 
 const transporter = nodemailer.createTransport({
-    host: process.env.SMTP_HOST || 'mailpit_dev',
-    port: Number(process.env.SMTP_PORT) || 1025,
+    host: process.env.SMTP_HOST,
+    port: Number(process.env.SMTP_PORT),
     secure: false,
     ...(process.env.SMTP_USER && {
         auth: {
@@ -14,7 +14,7 @@ const transporter = nodemailer.createTransport({
 
 export const sendPasswordResetEmail = async (to: string, resetUrl: string): Promise<void> => {
     await transporter.sendMail({
-        from: process.env.MAIL_FROM || 'noreply@supfile.local',
+        from: process.env.MAIL_FROM,
         to,
         subject: 'Réinitialisation de votre mot de passe — Supfile',
         html: `
@@ -40,7 +40,7 @@ export const sendPasswordResetEmail = async (to: string, resetUrl: string): Prom
 
 export const sendVerificationEmail = async (to: string, verificationUrl: string): Promise<void> => {
     await transporter.sendMail({
-        from: process.env.MAIL_FROM || 'noreply@supfile.local',
+        from: process.env.MAIL_FROM,
         to,
         subject: 'Vérifiez votre adresse email — Supfile',
         html: `
