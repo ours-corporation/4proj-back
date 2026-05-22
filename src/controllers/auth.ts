@@ -99,9 +99,7 @@ export const logout = async (req: Request, res: Response) => {
             if (user) {
                 await user.update({ refresh_token: null });
             }
-        } catch {
-            // Ignore errors during logout
-        }
+        } catch { }
         res.clearCookie('refreshToken');
         return res.status(200).json({ ok: true });
     } catch (err) {
@@ -132,8 +130,7 @@ export const register = async (req: Request, res: Response) => {
         });
 
         const token = generateVerificationToken(newUser.id);
-        const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
-        const verificationUrl = `${frontendUrl}/verify-email?token=${token}`;
+        const verificationUrl = `${process.env.FRONTEND_URL}/verify-email?token=${token}`;
 
         try {
             await sendVerificationEmail(email, verificationUrl);
@@ -162,7 +159,6 @@ export const resendVerification = async (req: Request, res: Response) => {
         return res.status(400).json({ error: 'Email requis.' });
     }
 
-    // Réponse identique que l'email existe ou non (évite l'énumération)
     const user = await User.findOne({ where: { email } });
 
     if (!user || user.email_verified || user.google_id || user.github_id) {
@@ -170,8 +166,7 @@ export const resendVerification = async (req: Request, res: Response) => {
     }
 
     const token = generateVerificationToken(user.id);
-    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
-    const verificationUrl = `${frontendUrl}/verify-email?token=${token}`;
+    const verificationUrl = `${process.env.FRONTEND_URL}/verify-email?token=${token}`;
 
     try {
         await sendVerificationEmail(email, verificationUrl);
@@ -216,7 +211,6 @@ export const verifyEmail = async (req: Request, res: Response) => {
 export const forgotPassword = async (req: Request, res: Response) => {
     const { email } = req.body;
 
-    // Réponse générique pour éviter l'énumération des comptes
     const genericResponse = { message: 'Si un compte existe avec cet email, un lien de réinitialisation a été envoyé.' };
 
     if (!email || typeof email !== 'string') {
@@ -226,12 +220,10 @@ export const forgotPassword = async (req: Request, res: Response) => {
     try {
         const user = await User.findOne({ where: { email } });
 
-        // Compte inexistant — réponse générique (évite l'énumération)
         if (!user) {
             return res.status(200).json(genericResponse);
         }
 
-        // Compte OAuth uniquement — on informe l'utilisateur
         if (user.google_id && !user.password) {
             return res.status(200).json({ oauthOnly: true, provider: 'google' });
         }
@@ -240,8 +232,7 @@ export const forgotPassword = async (req: Request, res: Response) => {
         }
 
         const token = generateResetToken(user.id);
-        const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
-        const resetUrl = `${frontendUrl}/reset-password?token=${token}`;
+        const resetUrl = `${process.env.FRONTEND_URL}/reset-password?token=${token}`;
 
         try {
             await sendPasswordResetEmail(email, resetUrl);
@@ -286,9 +277,7 @@ export const resetPassword = async (req: Request, res: Response) => {
     }
 };
 
-const allowedOrigins = process.env.APP_URL
-    ? process.env.APP_URL.split(",").map((u) => u.trim())
-    : ["http://localhost:3000"];
+const allowedOrigins = (process.env.APP_URL ?? '').split(',').map((u) => u.trim()).filter(Boolean);
 
 function isRedirectUriAllowed(redirectUri: string): boolean {
     try {
