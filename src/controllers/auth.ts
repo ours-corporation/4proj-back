@@ -290,38 +290,42 @@ function isRedirectUriAllowed(redirectUri: string): boolean {
 
 export const authWithGoogle = async (req: Request, res: Response) => {
     try {
-        const { code, redirect_uri } = req.body;
+        const { code, redirect_uri, id_token: directIdToken } = req.body;
 
-        if (!code) {
-            return res.status(400).json({ error: "Authorization code is required" });
+        let id_token: string | undefined;
+
+        if (directIdToken) {
+            // Mobile flow: id_token sent directly from Google Sign-In SDK
+            id_token = directIdToken;
+        } else if (code) {
+            // Web flow: exchange authorization code for tokens
+            if (!redirect_uri || !isRedirectUriAllowed(redirect_uri)) {
+                return res.status(400).json({ error: "redirect_uri non autorisé" });
+            }
+
+            const params = new URLSearchParams({
+                code,
+                client_id: process.env.GOOGLE_CLIENT_ID!,
+                client_secret: process.env.GOOGLE_CLIENT_SECRET!,
+                redirect_uri,
+                grant_type: "authorization_code",
+            });
+
+            const rep = await fetch("https://oauth2.googleapis.com/token", {
+                method: "POST",
+                headers: { "Content-Type": "application/x-www-form-urlencoded" },
+                body: params.toString(),
+            });
+
+            if (!rep.ok) {
+                return res.status(401).json({ error: "Échec de l’authentification Google" });
+            }
+
+            const data = await rep.json();
+            id_token = data.id_token;
+        } else {
+            return res.status(400).json({ error: "code ou id_token requis" });
         }
-
-        if (!redirect_uri || !isRedirectUriAllowed(redirect_uri)) {
-            return res.status(400).json({ error: "redirect_uri non autorisé" });
-        }
-
-        const params = new URLSearchParams({
-            code,
-            client_id: process.env.GOOGLE_CLIENT_ID!,
-            client_secret: process.env.GOOGLE_CLIENT_SECRET!,
-            redirect_uri,
-            grant_type: "authorization_code",
-        });
-
-        const rep = await fetch("https://oauth2.googleapis.com/token", {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/x-www-form-urlencoded",
-            },
-            body: params.toString(),
-        });
-
-        if (!rep.ok) {
-            return res.status(401).json({ error: "Échec de l’authentification Google" });
-        }
-
-        const data = await rep.json();
-        const { id_token } = data;
 
         if (!id_token) {
             return res.status(500).json({ error: "Token Google invalide" });
