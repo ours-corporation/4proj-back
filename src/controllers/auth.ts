@@ -99,9 +99,7 @@ export const logout = async (req: Request, res: Response) => {
             if (user) {
                 await user.update({ refresh_token: null });
             }
-        } catch {
-            // Ignore errors during logout
-        }
+        } catch { }
         res.clearCookie('refreshToken');
         return res.status(200).json({ ok: true });
     } catch (err) {
@@ -132,8 +130,7 @@ export const register = async (req: Request, res: Response) => {
         });
 
         const token = generateVerificationToken(newUser.id);
-        const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
-        const verificationUrl = `${frontendUrl}/verify-email?token=${token}`;
+        const verificationUrl = `${process.env.FRONTEND_URL}/verify-email?token=${token}`;
 
         try {
             await sendVerificationEmail(email, verificationUrl);
@@ -162,7 +159,6 @@ export const resendVerification = async (req: Request, res: Response) => {
         return res.status(400).json({ error: 'Email requis.' });
     }
 
-    // Réponse identique que l'email existe ou non (évite l'énumération)
     const user = await User.findOne({ where: { email } });
 
     if (!user || user.email_verified || user.google_id || user.github_id) {
@@ -170,8 +166,7 @@ export const resendVerification = async (req: Request, res: Response) => {
     }
 
     const token = generateVerificationToken(user.id);
-    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
-    const verificationUrl = `${frontendUrl}/verify-email?token=${token}`;
+    const verificationUrl = `${process.env.FRONTEND_URL}/verify-email?token=${token}`;
 
     try {
         await sendVerificationEmail(email, verificationUrl);
@@ -216,7 +211,6 @@ export const verifyEmail = async (req: Request, res: Response) => {
 export const forgotPassword = async (req: Request, res: Response) => {
     const { email } = req.body;
 
-    // Réponse générique pour éviter l'énumération des comptes
     const genericResponse = { message: 'Si un compte existe avec cet email, un lien de réinitialisation a été envoyé.' };
 
     if (!email || typeof email !== 'string') {
@@ -226,12 +220,10 @@ export const forgotPassword = async (req: Request, res: Response) => {
     try {
         const user = await User.findOne({ where: { email } });
 
-        // Compte inexistant — réponse générique (évite l'énumération)
         if (!user) {
             return res.status(200).json(genericResponse);
         }
 
-        // Compte OAuth uniquement — on informe l'utilisateur
         if (user.google_id && !user.password) {
             return res.status(200).json({ oauthOnly: true, provider: 'google' });
         }
@@ -240,8 +232,7 @@ export const forgotPassword = async (req: Request, res: Response) => {
         }
 
         const token = generateResetToken(user.id);
-        const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
-        const resetUrl = `${frontendUrl}/reset-password?token=${token}`;
+        const resetUrl = `${process.env.FRONTEND_URL}/reset-password?token=${token}`;
 
         try {
             await sendPasswordResetEmail(email, resetUrl);
@@ -286,9 +277,7 @@ export const resetPassword = async (req: Request, res: Response) => {
     }
 };
 
-const allowedOrigins = process.env.APP_URL
-    ? process.env.APP_URL.split(",").map((u) => u.trim())
-    : ["http://localhost:3000"];
+const allowedOrigins = (process.env.APP_URL ?? '').split(',').map((u) => u.trim()).filter(Boolean);
 
 function isRedirectUriAllowed(redirectUri: string): boolean {
     try {
@@ -301,38 +290,42 @@ function isRedirectUriAllowed(redirectUri: string): boolean {
 
 export const authWithGoogle = async (req: Request, res: Response) => {
     try {
-        const { code, redirect_uri } = req.body;
+        const { code, redirect_uri, id_token: directIdToken } = req.body;
 
-        if (!code) {
-            return res.status(400).json({ error: "Authorization code is required" });
+        let id_token: string | undefined;
+
+        if (directIdToken) {
+            // Mobile flow: id_token sent directly from Google Sign-In SDK
+            id_token = directIdToken;
+        } else if (code) {
+            // Web flow: exchange authorization code for tokens
+            if (!redirect_uri || !isRedirectUriAllowed(redirect_uri)) {
+                return res.status(400).json({ error: "redirect_uri non autorisé" });
+            }
+
+            const params = new URLSearchParams({
+                code,
+                client_id: process.env.GOOGLE_CLIENT_ID!,
+                client_secret: process.env.GOOGLE_CLIENT_SECRET!,
+                redirect_uri,
+                grant_type: "authorization_code",
+            });
+
+            const rep = await fetch("https://oauth2.googleapis.com/token", {
+                method: "POST",
+                headers: { "Content-Type": "application/x-www-form-urlencoded" },
+                body: params.toString(),
+            });
+
+            if (!rep.ok) {
+                return res.status(401).json({ error: "Échec de l’authentification Google" });
+            }
+
+            const data = await rep.json();
+            id_token = data.id_token;
+        } else {
+            return res.status(400).json({ error: "code ou id_token requis" });
         }
-
-        if (!redirect_uri || !isRedirectUriAllowed(redirect_uri)) {
-            return res.status(400).json({ error: "redirect_uri non autorisé" });
-        }
-
-        const params = new URLSearchParams({
-            code,
-            client_id: process.env.GOOGLE_CLIENT_ID!,
-            client_secret: process.env.GOOGLE_CLIENT_SECRET!,
-            redirect_uri,
-            grant_type: "authorization_code",
-        });
-
-        const rep = await fetch("https://oauth2.googleapis.com/token", {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/x-www-form-urlencoded",
-            },
-            body: params.toString(),
-        });
-
-        if (!rep.ok) {
-            return res.status(401).json({ error: "Échec de l’authentification Google" });
-        }
-
-        const data = await rep.json();
-        const { id_token } = data;
 
         if (!id_token) {
             return res.status(500).json({ error: "Token Google invalide" });
