@@ -1,5 +1,5 @@
 import { Router, Request, Response } from 'express';
-import {register, login, refresh, logout, authWithGoogle, authWithGithub, verifyEmail, resendVerification, forgotPassword, resetPassword} from "../controllers/auth";
+import {register, login, refresh, logout, authWithGoogle, authWithGithub, githubInitiate, githubCallback, verifyEmail, resendVerification, forgotPassword, resetPassword} from "../controllers/auth";
 import {validate} from "../middleware/validate";
 import {loginValidatorSchema, registerValidatorSchema} from "../validator/auth";
 
@@ -342,6 +342,14 @@ authRouter.post('/auth/github', async (req: Request, res: Response) => {
     return authWithGithub(req, res);
 });
 
+authRouter.get('/auth/github/initiate', (req: Request, res: Response) => {
+    return githubInitiate(req, res);
+});
+
+authRouter.get('/auth/github/callback', async (req: Request, res: Response) => {
+    return githubCallback(req, res);
+});
+
 /**
  * @swagger
  * /verify-email:
@@ -358,8 +366,42 @@ authRouter.post('/auth/github', async (req: Request, res: Response) => {
  *           type: string
  *         description: Token JWT de vérification (valide 24h)
  *     responses:
- *       302:
- *         description: Redirection vers le frontend avec le résultat (?verified=true|false|already)
+ *       200:
+ *         description: Email vérifié avec succès ou déjà vérifié.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 already:
+ *                   type: boolean
+ *                   example: false
+ *                 message:
+ *                   type: string
+ *                   example: Email vérifié avec succès.
+ *       400:
+ *         description: Token manquant, invalide ou expiré.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ *                   example: Token expiré ou invalide.
+ *       404:
+ *         description: Utilisateur introuvable.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ *                   example: Utilisateur introuvable.
  */
 authRouter.get('/verify-email', async (req: Request, res: Response) => {
     return verifyEmail(req, res);
@@ -400,6 +442,51 @@ authRouter.get('/verify-email', async (req: Request, res: Response) => {
  *         description: Email manquant ou compte déjà vérifié.
  *       404:
  *         description: Aucun compte trouvé pour cet email.
+ */
+/**
+ * @swagger
+ * /resend-verification:
+ *   post:
+ *     tags:
+ *       - Auth
+ *     summary: Renvoi de l'email de vérification
+ *     description: >
+ *       Génère un nouveau token et renvoie l'email de vérification.
+ *       La réponse est toujours identique pour éviter l'énumération des comptes.
+ *       Sans effet pour les comptes OAuth (Google/GitHub) ou déjà vérifiés.
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - email
+ *             properties:
+ *               email:
+ *                 type: string
+ *                 example: utilisateur@exemple.com
+ *     responses:
+ *       200:
+ *         description: Réponse générique (email envoyé ou non, indiscernable).
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: Si un compte non vérifié existe, un email a été envoyé.
+ *       400:
+ *         description: Email manquant.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ *                   example: Email requis.
  */
 authRouter.post('/resend-verification', async (req: Request, res: Response) => {
     return resendVerification(req, res);
@@ -447,11 +534,10 @@ authRouter.post('/forgot-password', async (req: Request, res: Response) => {
  *   post:
  *     tags:
  *       - Auth
- *     summary: Réinitialiser le mot de passe
- *     description: |
- *       Valide le token de réinitialisation (reçu par email) et met à jour le mot de passe.
- *       Le token est à usage unique et expire après 1h.
- *       Règles du mot de passe : 12 caractères minimum, au moins une majuscule, un chiffre et un caractère spécial.
+ *     summary: Réinitialisation du mot de passe
+ *     description: >
+ *       Valide le token JWT reçu par email, met à jour le mot de passe
+ *       et invalide tous les refresh tokens actifs.
  *     requestBody:
  *       required: true
  *       content:
@@ -464,11 +550,11 @@ authRouter.post('/forgot-password', async (req: Request, res: Response) => {
  *             properties:
  *               token:
  *                 type: string
- *                 description: Token de réinitialisation reçu par email.
+ *                 description: Token JWT de réinitialisation (valide 1h)
  *               password:
  *                 type: string
- *                 description: Nouveau mot de passe.
- *                 example: "MonNouveauMdp1!"
+ *                 description: Nouveau mot de passe (min. 8 caractères)
+ *                 example: NouveauMotDePasse!42
  *     responses:
  *       200:
  *         description: Mot de passe réinitialisé avec succès.
@@ -477,12 +563,32 @@ authRouter.post('/forgot-password', async (req: Request, res: Response) => {
  *             schema:
  *               type: object
  *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
  *                 message:
  *                   type: string
+ *                   example: Mot de passe réinitialisé avec succès.
  *       400:
- *         description: Token manquant, expiré ou mot de passe invalide.
+ *         description: Token manquant, invalide, expiré ou mot de passe trop court.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ *                   example: Token expiré ou invalide.
  *       404:
- *         description: Token introuvable.
+ *         description: Utilisateur introuvable.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ *                   example: Utilisateur introuvable.
  */
 authRouter.post('/reset-password', async (req: Request, res: Response) => {
     return resetPassword(req, res);

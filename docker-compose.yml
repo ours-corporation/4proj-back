@@ -9,6 +9,9 @@ services:
       - user_uploads:/app/uploads # volume pour les fichiers uploadés
     ports:
       - "3001:3000"
+    env_file:
+      - path: .env
+        required: false      # ne plante pas si le fichier est absent
     environment:
       NODE_ENV: development
       PORT: 3000
@@ -17,8 +20,25 @@ services:
       DB_PASSWORD: ${DB_PASSWORD:-password}
       DB_NAME: ${DB_NAME:-mydatabase}
       DB_PORT: ${DB_PORT:-5432}
+      SMTP_HOST: ${SMTP_HOST:-mailpit}
+      SMTP_PORT: ${SMTP_PORT:-1025}
+      MAIL_FROM: ${MAIL_FROM:-noreply@supfile.local}
+      FRONTEND_URL: ${FRONTEND_URL:-http://localhost:3000}
+      BACKEND_URL: ${BACKEND_URL:-http://localhost:3001}
+      APP_URL: ${APP_URL:-http://localhost:3000,http://localhost:3001}
     depends_on:
       - db
+
+  mailpit:
+    image: axllent/mailpit:latest
+    container_name: mailpit_dev
+    ports:
+      - "1025:1025"
+      - "8025:8025"
+    environment:
+      MP_MAX_MESSAGES: 500
+      MP_SMTP_AUTH_ACCEPT_ANY: 1
+      MP_SMTP_AUTH_ALLOW_INSECURE: 1
 
   db:
     container_name: db_postgres
