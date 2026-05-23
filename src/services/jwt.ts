@@ -51,3 +51,13 @@ export const verifyVerificationToken = (token: string): { id: number; type: stri
     const JWT_SECRET = process.env.JWT_SECRET as string;
     return jwt.verify(token, JWT_SECRET) as { id: number; type: string };
 };
+
+export const generateGithubStateToken = (platform: string): string => {
+    const JWT_SECRET = process.env.JWT_SECRET as string;
+    return jwt.sign({ platform, type: 'github-state' }, JWT_SECRET, { expiresIn: '10m' });
+};
+
+export const verifyGithubStateToken = (token: string): { platform: string; type: string } => {
+    const JWT_SECRET = process.env.JWT_SECRET as string;
+    return jwt.verify(token, JWT_SECRET) as { platform: string; type: string };
+};
