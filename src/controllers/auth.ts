@@ -116,7 +116,7 @@ export const logout = async (req: Request, res: Response) => {
 
 export const register = async (req: Request, res: Response) => {
     try {
-        const { username, email, password } = req.body;
+        const { username, email, password, terms_accepted } = req.body;
 
         let newUsername: string;
         if(username == null || username == "") {
@@ -133,6 +133,7 @@ export const register = async (req: Request, res: Response) => {
             password: hashedPassword,
             quota_id: await getDefaultQuotaId(),
             email_verified: false,
+            terms_accepted_at: terms_accepted ? new Date() : null,
         });
 
         const token = generateVerificationToken(newUser.id);

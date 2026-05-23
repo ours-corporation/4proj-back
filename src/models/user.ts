@@ -96,6 +96,14 @@ export class User extends Model {
     })
     profile_picture_key!: string | null;
 
+    // Date d'acceptation des CGU et mentions légales (null = pas encore accepté)
+    @Column({
+        type: DataType.DATE,
+        allowNull: true,
+        field: 'terms_accepted_at'
+    })
+    terms_accepted_at!: Date | null;
+
     // --- RELATIONS FICHIERS / DOSSIERS ---
 
     @HasMany(() => Folder)
