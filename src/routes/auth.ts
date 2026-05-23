@@ -1,5 +1,5 @@
 import { Router, Request, Response } from 'express';
-import {register, login, refresh, logout, authWithGoogle, authWithGithub, verifyEmail, resendVerification, forgotPassword, resetPassword} from "../controllers/auth";
+import {register, login, refresh, logout, authWithGoogle, authWithGithub, githubInitiate, githubCallback, verifyEmail, resendVerification, forgotPassword, resetPassword} from "../controllers/auth";
 import {validate} from "../middleware/validate";
 import {loginValidatorSchema, registerValidatorSchema} from "../validator/auth";
 
@@ -340,6 +340,14 @@ authRouter.post('/auth/google', async (req: Request, res: Response) => {
  */
 authRouter.post('/auth/github', async (req: Request, res: Response) => {
     return authWithGithub(req, res);
+});
+
+authRouter.get('/auth/github/initiate', (req: Request, res: Response) => {
+    return githubInitiate(req, res);
+});
+
+authRouter.get('/auth/github/callback', async (req: Request, res: Response) => {
+    return githubCallback(req, res);
 });
 
 /**

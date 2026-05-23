@@ -2,7 +2,7 @@ import { Request, Response } from 'express';
 import { UniqueConstraintError } from 'sequelize';
 import { User, Quota } from '../models';
 import { compareString, hashString } from '../services/hash';
-import { generateAccessToken, generateRefreshToken, verifyRefreshToken, generateVerificationToken, verifyVerificationToken, generateResetToken, verifyResetToken } from '../services/jwt';
+import { generateAccessToken, generateRefreshToken, verifyRefreshToken, generateVerificationToken, verifyVerificationToken, generateResetToken, verifyResetToken, generateGithubStateToken, verifyGithubStateToken } from '../services/jwt';
 import { sendVerificationEmail, sendPasswordResetEmail } from '../services/mail';
 import jwt from "jsonwebtoken";
 
@@ -462,6 +462,130 @@ export const authWithGithub = async (req: Request, res: Response) => {
         return issueTokens(res, user);
     } catch (err) {
         return res.status(500).json({ error: "Erreur serveur" });
+    }
+};
+
+export const githubInitiate = (req: Request, res: Response) => {
+    const platform = req.query.platform === 'mobile' ? 'mobile' : 'web';
+    const state = generateGithubStateToken(platform);
+    const callbackUrl = `${process.env.BACKEND_URL}/api/auth/github/callback`;
+    const githubUrl = new URL('https://github.com/login/oauth/authorize');
+    githubUrl.searchParams.set('client_id', process.env.GITHUB_CLIENT_ID!);
+    githubUrl.searchParams.set('redirect_uri', callbackUrl);
+    githubUrl.searchParams.set('scope', 'user:email');
+    githubUrl.searchParams.set('state', state);
+    return res.redirect(githubUrl.toString());
+};
+
+export const githubCallback = async (req: Request, res: Response) => {
+    const { code, state, error: githubError } = req.query;
+
+    const frontendErrorRedirect = (msg: string) =>
+        res.redirect(`${process.env.FRONTEND_URL}/login?error=${encodeURIComponent(msg)}`);
+
+    if (githubError) {
+        return frontendErrorRedirect("Authentification GitHub annulée.");
+    }
+
+    if (!state || typeof state !== 'string') {
+        return frontendErrorRedirect("State invalide.");
+    }
+
+    let platform: string;
+    try {
+        const payload = verifyGithubStateToken(state);
+        if (payload.type !== 'github-state') throw new Error('Invalid state type');
+        platform = payload.platform;
+    } catch {
+        return frontendErrorRedirect("State invalide ou expiré.");
+    }
+
+    const errorRedirect = (msg: string) =>
+        platform === 'mobile'
+            ? res.redirect(`supfile://auth?error=${encodeURIComponent(msg)}`)
+            : frontendErrorRedirect(msg);
+
+    if (!code || typeof code !== 'string') {
+        return errorRedirect("Code d'autorisation GitHub manquant.");
+    }
+
+    try {
+        const callbackUrl = `${process.env.BACKEND_URL}/api/auth/github/callback`;
+
+        const tokenRep = await fetch("https://github.com/login/oauth/access_token", {
+            method: "POST",
+            headers: {
+                "Accept": "application/json",
+                "Content-Type": "application/x-www-form-urlencoded",
+            },
+            body: new URLSearchParams({
+                client_id: process.env.GITHUB_CLIENT_ID!,
+                client_secret: process.env.GITHUB_CLIENT_SECRET!,
+                code,
+                redirect_uri: callbackUrl,
+            }).toString(),
+        });
+
+        if (!tokenRep.ok) {
+            return errorRedirect("Échec de l'authentification GitHub.");
+        }
+
+        const tokenData = await tokenRep.json();
+        const github_access_token = tokenData.access_token;
+        if (!github_access_token) {
+            return errorRedirect("Token GitHub invalide.");
+        }
+
+        const userRep = await fetch("https://api.github.com/user", {
+            headers: { "Accept": "application/json", "Authorization": `Bearer ${github_access_token}` },
+        });
+        const userData = await userRep.json();
+        const github_id = userData.id;
+        const username = userData.login;
+
+        const emailsRep = await fetch("https://api.github.com/user/emails", {
+            headers: { "Accept": "application/json", "Authorization": `Bearer ${github_access_token}` },
+        });
+        const emailsData = await emailsRep.json();
+        const primaryEmail = emailsData.find((e: any) => e.primary && e.verified);
+        if (!primaryEmail) {
+            return errorRedirect("Aucun email principal vérifié trouvé sur le compte GitHub.");
+        }
+        const email = primaryEmail.email;
+
+        let user = await User.findOne({ where: { email } });
+        if (user) {
+            if (user.github_id == github_id) {
+                // même utilisateur, OK
+            } else if (!user.github_id) {
+                return errorRedirect("Un compte avec cet email existe déjà sans GitHub.");
+            } else {
+                return errorRedirect("Compte GitHub invalide.");
+            }
+        } else {
+            user = await User.create({ username, email, github_id, quota_id: 1, email_verified: true });
+        }
+
+        const accessToken = generateAccessToken({ id: user.id, email: user.email, username: user.username });
+        const refreshToken = generateRefreshToken({ id: user.id });
+        const hashedRefresh = await hashString(refreshToken);
+        await user.update({ refresh_token: hashedRefresh });
+
+        if (platform === 'mobile') {
+            const params = new URLSearchParams({ access_token: accessToken, refresh_token: refreshToken });
+            return res.redirect(`supfile://auth?${params.toString()}`);
+        }
+
+        res.cookie("refreshToken", refreshToken, {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === "production",
+            sameSite: "strict",
+            maxAge: 30 * 24 * 60 * 60 * 1000,
+        });
+        return res.redirect(`${process.env.FRONTEND_URL}/auth/github/callback?access_token=${encodeURIComponent(accessToken)}`);
+    } catch (err) {
+        console.error('[GITHUB CALLBACK]', err);
+        return errorRedirect("Erreur lors de l'authentification GitHub.");
     }
 };
 
