@@ -248,7 +248,7 @@ class FileService {
         const maxQuotaBytes = Number(user.quota.quota_bytes);
         const currentUsage = Number(user.used_bytes);
 
-        if (currentUsage + incomingBytes > maxQuotaBytes) {
+        if (currentUsage + Number(incomingBytes) > maxQuotaBytes) {
             throw new Error("Espace insuffisant. Vous avez atteint votre quota.");
         }
     }
