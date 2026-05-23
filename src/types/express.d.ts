@@ -4,6 +4,7 @@ declare global {
             user: {
                 id: number;
                 email: string;
+                terms_accepted: boolean;
             };
         }
     }
