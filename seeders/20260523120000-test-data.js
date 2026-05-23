@@ -80,8 +80,8 @@ module.exports = {
       },
     ]);
 
-    console.log('✅ 4 comptes de test créés (mot de passe : Test@123456!)');
-    console.log('   alice@test.com / bob@test.com / carla@test.com / david@test.com');
+    console.log('4 comptes de test créés (mot de passe : Test@123456!)');
+    console.log('alice@test.com / bob@test.com / carla@test.com / david@test.com');
   },
 
   async down() {},
