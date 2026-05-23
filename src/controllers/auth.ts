@@ -6,6 +6,12 @@ import { generateAccessToken, generateRefreshToken, verifyRefreshToken, generate
 import { sendVerificationEmail, sendPasswordResetEmail } from '../services/mail';
 import jwt from "jsonwebtoken";
 
+async function getDefaultQuotaId(): Promise<number> {
+    const quota = await Quota.findOne({ order: [['id', 'ASC']] });
+    if (!quota) throw new Error('Aucun forfait disponible en base. Veuillez initialiser les quotas.');
+    return quota.id;
+}
+
 export const login = async (req: Request, res: Response) => {
     try {
         const { email, password } = req.body;
@@ -125,7 +131,7 @@ export const register = async (req: Request, res: Response) => {
             username: newUsername,
             email,
             password: hashedPassword,
-            quota_id: 1,
+            quota_id: await getDefaultQuotaId(),
             email_verified: false,
         });
 
@@ -362,7 +368,7 @@ export const authWithGoogle = async (req: Request, res: Response) => {
                 username,
                 email,
                 google_id,
-                quota_id: 1,
+                quota_id: await getDefaultQuotaId(),
                 email_verified: true,
             });
         }
@@ -454,7 +460,7 @@ export const authWithGithub = async (req: Request, res: Response) => {
                 username,
                 email,
                 github_id,
-                quota_id: 1,
+                quota_id: await getDefaultQuotaId(),
                 email_verified: true,
             });
         }

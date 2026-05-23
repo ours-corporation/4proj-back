@@ -270,7 +270,7 @@ class FolderService {
     }
 
     private async calculateFolderSize(folderId: number): Promise<number> {
-        const fileSize = await File.sum('size_bytes', { where: { folder_id: folderId, trashed_at: null } }) || 0;
+        const fileSize = Number(await File.sum('size_bytes', { where: { folder_id: folderId, trashed_at: null } })) || 0;
 
         const subfolders = await Folder.findAll({ where: { parent_id: folderId, trashed_at: null }, attributes: ['id'] });
         let totalSize = fileSize;
@@ -290,7 +290,7 @@ class FolderService {
         const maxQuotaBytes = Number(user.quota.quota_bytes);
         const currentUsage = Number(user.used_bytes);
 
-        if (currentUsage + incomingBytes > maxQuotaBytes) {
+        if (currentUsage + Number(incomingBytes) > maxQuotaBytes) {
             throw new Error("Espace insuffisant. Vous avez atteint votre quota.");
         }
     }
