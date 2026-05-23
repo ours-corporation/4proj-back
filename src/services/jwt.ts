@@ -1,11 +1,11 @@
 import jwt from 'jsonwebtoken';
 
 export const generateAccessToken = (
-    user: { id: number; email: string ; username: string }
+    user: { id: number; email: string; username: string; terms_accepted: boolean }
 ) => {
     const JWT_SECRET = process.env.JWT_SECRET as string;
     return jwt.sign(
-        { id: user.id , email: user.email, username: user.username },
+        { id: user.id, email: user.email, username: user.username, terms_accepted: user.terms_accepted },
         JWT_SECRET,
         { expiresIn: '15m' }
     );

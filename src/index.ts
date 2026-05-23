@@ -8,7 +8,7 @@ import { setupSwagger } from './swagger';
 import authRoutes from './routes/auth';
 import usersRouter from './routes/user';
 import filesRouter from './routes/file';
-import { requireAuth } from './middleware/auth';
+import { requireAuth, requireTerms } from './middleware/auth';
 import cookieParser from 'cookie-parser';
 import folderRouter from './routes/folder';
 import trashRouter from './routes/trash';
@@ -46,14 +46,14 @@ apiRouter.get('/status', (_req: Request, res: Response) => {
 });
 
 apiRouter.use('/', authRoutes);
-apiRouter.use('/users', requireAuth, usersRouter);
-apiRouter.use('/files', requireAuth, filesRouter)
-apiRouter.use('/folders', requireAuth, folderRouter);
-apiRouter.use('/trash', requireAuth, trashRouter);
-apiRouter.use('/shares', requireAuth, shareRouter);
+apiRouter.use('/users', requireAuth, requireTerms, usersRouter);
+apiRouter.use('/files', requireAuth, requireTerms, filesRouter);
+apiRouter.use('/folders', requireAuth, requireTerms, folderRouter);
+apiRouter.use('/trash', requireAuth, requireTerms, trashRouter);
+apiRouter.use('/shares', requireAuth, requireTerms, shareRouter);
 apiRouter.use('/public', publicRouter);
-apiRouter.use('/search', requireAuth, searchRouter);
-apiRouter.use('/items', requireAuth, itemsRouter);
+apiRouter.use('/search', requireAuth, requireTerms, searchRouter);
+apiRouter.use('/items', requireAuth, requireTerms, itemsRouter);
 
 
 app.use('/api', apiRouter);

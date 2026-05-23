@@ -28,7 +28,7 @@ export const login = async (req: Request, res: Response) => {
             return res.status(403).json({ error: 'Veuillez vérifier votre adresse email avant de vous connecter.' });
         }
 
-        const accessToken = generateAccessToken({ id: user.id, email: user.email, username: user.username });
+        const accessToken = generateAccessToken({ id: user.id, email: user.email, username: user.username, terms_accepted: user.terms_accepted_at !== null });
         const refreshToken = generateRefreshToken({ id: user.id });
 
         const hashedRefresh = await hashString(refreshToken);
@@ -42,7 +42,8 @@ export const login = async (req: Request, res: Response) => {
             maxAge: 30 * 24 * 60 * 60 * 1000,
         });
 
-        return res.json({ accessToken });
+        const termsRequired = user.terms_accepted_at === null;
+        return res.json({ accessToken, ...(termsRequired && { terms_required: true }) });
     } catch (err) {
         console.error(err);
         return res.status(500).json({ error: 'Internal Server Error' });
@@ -72,7 +73,7 @@ export const refresh = async (req: Request, res: Response) => {
         const matches = await compareString(refreshToken, user.refresh_token);
         if (!matches) return res.status(401).json({ error: 'Invalid refresh token' });
 
-        const newAccess = generateAccessToken({ id: user.id, email: user.email , username: user.username });
+        const newAccess = generateAccessToken({ id: user.id, email: user.email, username: user.username, terms_accepted: user.terms_accepted_at !== null });
         const newRefresh = generateRefreshToken({ id: user.id });
         const newHashed = await hashString(newRefresh);
         await user.update({ refresh_token: newHashed });
@@ -573,13 +574,14 @@ export const githubCallback = async (req: Request, res: Response) => {
             user = await User.create({ username, email, github_id, quota_id: 1, email_verified: true });
         }
 
-        const accessToken = generateAccessToken({ id: user.id, email: user.email, username: user.username });
+        const accessToken = generateAccessToken({ id: user.id, email: user.email, username: user.username, terms_accepted: user.terms_accepted_at !== null });
         const refreshToken = generateRefreshToken({ id: user.id });
         const hashedRefresh = await hashString(refreshToken);
         await user.update({ refresh_token: hashedRefresh });
 
         if (platform === 'mobile') {
             const params = new URLSearchParams({ access_token: accessToken, refresh_token: refreshToken });
+            if (user.terms_accepted_at === null) params.set('terms_required', 'true');
             return res.redirect(`supfile://auth?${params.toString()}`);
         }
 
@@ -589,7 +591,9 @@ export const githubCallback = async (req: Request, res: Response) => {
             sameSite: "strict",
             maxAge: 30 * 24 * 60 * 60 * 1000,
         });
-        return res.redirect(`${process.env.FRONTEND_URL}/auth/github/callback?access_token=${encodeURIComponent(accessToken)}`);
+        const webParams = new URLSearchParams({ access_token: accessToken });
+        if (user.terms_accepted_at === null) webParams.set('terms_required', 'true');
+        return res.redirect(`${process.env.FRONTEND_URL}/auth/github/callback?${webParams.toString()}`);
     } catch (err) {
         console.error('[GITHUB CALLBACK]', err);
         return errorRedirect("Erreur lors de l'authentification GitHub.");
@@ -597,7 +601,7 @@ export const githubCallback = async (req: Request, res: Response) => {
 };
 
 const issueTokens = async (res: Response, user: User) => {
-    const accessToken = generateAccessToken({id: user.id, email: user.email, username: user.username});
+    const accessToken = generateAccessToken({ id: user.id, email: user.email, username: user.username, terms_accepted: user.terms_accepted_at !== null });
 
     const refreshToken = generateRefreshToken({ id: user.id });
 
@@ -612,5 +616,26 @@ const issueTokens = async (res: Response, user: User) => {
         maxAge: 30 * 24 * 60 * 60 * 1000,
     });
 
-    return res.json({ accessToken });
+    const termsRequired = user.terms_accepted_at === null;
+    return res.json({ accessToken, ...(termsRequired && { terms_required: true }) });
+};
+
+export const acceptTerms = async (req: Request, res: Response) => {
+    try {
+        const user = await User.findByPk(req.user.id);
+        if (!user) return res.status(404).json({ error: 'Utilisateur introuvable.' });
+
+        await user.update({ terms_accepted_at: new Date() });
+
+        const accessToken = generateAccessToken({
+            id: user.id,
+            email: user.email,
+            username: user.username,
+            terms_accepted: true,
+        });
+
+        return res.json({ accessToken });
+    } catch {
+        return res.status(500).json({ error: 'Internal Server Error' });
+    }
 };

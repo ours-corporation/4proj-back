@@ -1,5 +1,6 @@
 import { Router, Request, Response } from 'express';
-import {register, login, refresh, logout, authWithGoogle, authWithGithub, githubInitiate, githubCallback, verifyEmail, resendVerification, forgotPassword, resetPassword} from "../controllers/auth";
+import {register, login, refresh, logout, authWithGoogle, authWithGithub, githubInitiate, githubCallback, verifyEmail, resendVerification, forgotPassword, resetPassword, acceptTerms} from "../controllers/auth";
+import { requireAuth } from '../middleware/auth';
 import {validate} from "../middleware/validate";
 import {loginValidatorSchema, registerValidatorSchema} from "../validator/auth";
 
@@ -592,6 +593,11 @@ authRouter.post('/forgot-password', async (req: Request, res: Response) => {
  */
 authRouter.post('/reset-password', async (req: Request, res: Response) => {
     return resetPassword(req, res);
+});
+
+// Accessible avec un token sans CGU acceptées (requireAuth seul, pas requireTerms)
+authRouter.post('/accept-terms', requireAuth, async (req: Request, res: Response) => {
+    return acceptTerms(req, res);
 });
 
 export default authRouter;
